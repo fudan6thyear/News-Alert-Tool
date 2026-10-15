@@ -90,16 +90,7 @@
 
 部分源配置了 RSS/抓取失败时的 **Google News RSS 等 fallback**，以同文件内 `fallback` 为准。
 
----
 
-## Bambu Lab 社区舆情总结（用户可见能力）
-
-与代码 `app/services/summarizer.js` 中 `summarizeComplianceCommunityPulse` 及界面「**Bambu Lab 社区舆情总结（隐私/安全）**」一致：
-
-- **输入数据**：在**当前合规抓取结果**中筛选——`_source` 含 `forum_bambulab`、`facebook_bambulab`、`reddit_bambulab`、`google_search_bambulab`（历史键名），或标题/摘要/描述/链接中英文组合同时命中 `bambu` 与 `privacy` / `security`。  
-- **无匹配帖子时**：不调用模型，直接返回 `hasDiscussion: false`、`findings: []`，结论文案为「近期未发现针对 Bambu Lab 隐私或安全的社区讨论。」（与前端默认展示一致）。  
-- **有匹配时**：去重后最多取 **120** 条，调用同一套 AI 配置；模型须返回单一 JSON 对象（含 `hasDiscussion`、`conclusionZh` / `conclusionEn`、`findings` 等，见代码内 Prompt）。解析后 `**findings` 最多保留 5 条**，且条目须带非空 `link`；`hasDiscussion` 在代码中与「存在有效 findings」对齐。  
-- **出现位置**：执行「AI 分析」流式任务时（`server.js` 中与合规 Top10 同批）、控制面板独立区块展示、**TXT 导出**中含对应段落（`server.js` 导出逻辑）、**飞书 Webhook** 正文中的「Bambu Lab 社区舆情」块（见上一节）。**SMTP 邮件**当前不渲染该总结（`sendEmail` 未接收社区舆情对象）。
 
 ---
 
