@@ -1,0 +1,29 @@
+{
+  "name": "news-alert",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "新闻聚合、AI摘要、定时邮件推送系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:test": "set NEWS_ALERT_PORT=3201&& node server.js",
+    "dev": "node --watch server.js",
+    "dev:test": "set NEWS_ALERT_PORT=3201&& node --watch server.js",
+    "test": "node --test",
+    "autostart": "node scripts/autostart.js install",
+    "autostart:remove": "node scripts/autostart.js uninstall",
+    "autostart:status": "node scripts/autostart.js status"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "axios": "^1.15.0",
+    "dayjs": "^1.11.20",
+    "es-toolkit": "^1.45.1",
+    "express": "^5.1.0",
+    "fast-xml-parser": "^5.5.12",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.10.1",
+    "puppeteer": "^24.40.0",
+    "zod": "^4.3.6"
+  }
+}

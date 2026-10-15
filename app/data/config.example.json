@@ -1,0 +1,39 @@
+{
+  "ai": {
+    "baseUrl": "https://api.openai.com",
+    "modelName": "gpt-4o-mini",
+    "apiKey": "sk-your-api-key-here"
+  },
+  "prompts": {
+    "newsTop10Prompt": "你是资深双语科技新闻编辑。以下是今日 {{itemCount}} 条热点新闻标题（来自多个平台）。\n\n任务：找出最重要、跨平台出现频率最高的 10 个热点话题，按热度排序。\n\n输出要求：直接返回 JSON 数组，每个元素：\n{\"rank\":1,\"titleZh\":\"中文标题\",\"titleEn\":\"English Title\",\"summaryZh\":\"2句话中文核心摘要\",\"summaryEn\":\"1-2 sentence English summary\",\"sources\":\"来源1,来源2\",\"refIndex\":该话题最具代表性的一条新闻的序号,\"url\":\"该条新闻的原始链接\"}\n\n强制规则：\n1. titleZh 和 summaryZh 必须是自然中文，不能保留纯英文\n2. titleEn 和 summaryEn 必须是自然英文\n3. 不要把中英文混在同一个字段里\n4. 即使原标题是英文，也必须补充准确中文；即使原标题是中文，也必须补充对应英文\n5. refIndex 必须是新闻列表中的序号（1 到 {{itemCount}}），选择该话题最具代表性的一条\n6. url 必须从新闻列表中原样复制，不要编造链接；如果该条新闻没有链接则留空字符串\n\n不要返回markdown标记、不要多余解释，只返回JSON数组。\n\n新闻列表：\n{{titleList}}",
+    "complianceTop10Prompt": "你是一家跨国科技公司的 DPO (Data Protection Officer)，同时也是双语合规新闻编辑。以下是今日从欧洲、英国、中国、美国、日本、韩国等多个监管机构和隐私组织抓取的 {{itemCount}} 条隐私与AI合规相关资讯标题。\n\n你的任务：站在 DPO 的专业视角，筛选出最值得关注的 10 条重要动态，按重要程度排序。\n\n筛选标准（优先级从高到低）：\n1. 新的隐私/数据保护法律法规颁布或修订（GDPR、PIPL、CCPA、AI Act 等）\n2. 监管机构执法行动（罚款、处罚决定、调查）\n3. 重要判例或司法裁决\n4. 监管指南、标准、白皮书发布\n5. 跨境数据传输相关政策变动\n6. AI 治理与算法监管动态\n7. 行业影响重大的合规事件\n\n输出要求：直接返回 JSON 数组，每个元素：\n{\"rank\":1,\"titleZh\":\"中文标题\",\"titleEn\":\"English Title\",\"summaryZh\":\"2-3句话中文摘要，说明事件内容及对企业合规的影响\",\"summaryEn\":\"1-2 sentence English summary\",\"region\":\"涉及地区\",\"sources\":\"来源1,来源2\",\"refIndex\":该条最相关新闻的序号,\"url\":\"该条新闻的原始链接\"}\n\n强制规则：\n1. titleZh 和 summaryZh 必须是自然中文，不能返回纯英文\n2. titleEn 和 summaryEn 必须是自然英文\n3. 不要把中英文混在同一个字段里\n4. 中文部分需要体现合规影响，英文部分保持忠实简洁\n5. refIndex 必须是资讯列表中的序号（1 到 {{itemCount}}），选择该话题最相关的一条\n6. url 必须从资讯列表中原样复制，不要编造链接；如果该条资讯没有链接则留空字符串\n\n不要返回markdown标记、不要多余解释，只返回JSON数组。\n\n资讯列表：\n{{titleList}}"
+  },
+  "webhook": {
+    "enabled": false,
+    "url": "https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-token",
+    "linkRenderMode": "markdown"
+  },
+  "email": {
+    "senderEmail": "you@163.com",
+    "senderPassword": "your-smtp-auth-code",
+    "smtpHost": "smtp.163.com",
+    "smtpPort": 465
+  },
+  "recipientGroups": [
+    {
+      "id": "grp_news",
+      "name": "新闻订阅组",
+      "color": "#2563eb",
+      "emails": ["recipient@example.com"]
+    },
+    {
+      "id": "grp_compliance",
+      "name": "合规订阅组",
+      "color": "#7c3aed",
+      "emails": ["dpo@example.com"]
+    }
+  ],
+  "schedules": [],
+  "sources": {},
+  "complianceSources": {}
+}

@@ -1,0 +1,3267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Alert - 新闻聚合推送系统</title>
+  <style>
+    :root {
+      --bg: #f0f4fa;
+      --surface: rgba(255,255,255,0.96);
+      --surface-raised: #ffffff;
+      --border-soft: rgba(15,23,42,0.06);
+      --border-medium: rgba(15,23,42,0.12);
+      --text: #0f172a;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-tertiary: #94a3b8;
+      --accent-blue: #1d4ed8;
+      --accent-blue-hover: #1e40af;
+      --accent-blue-light: rgba(29,78,216,0.07);
+      --accent-blue-medium: rgba(29,78,216,0.14);
+      --accent-cyan: #0891b2;
+      --accent-green: #059669;
+      --accent-amber: #d97706;
+      --accent-rose: #be123c;
+      --accent-purple: #7c3aed;
+      --accent-purple-light: rgba(124,58,237,0.07);
+      --shadow-xs: 0 1px 3px rgba(15,23,42,0.04);
+      --shadow-soft: 0 4px 20px rgba(15,23,42,0.05);
+      --shadow-medium: 0 8px 30px rgba(15,23,42,0.08);
+      --shadow-lg: 0 16px 48px rgba(15,23,42,0.10);
+      --shadow-card-hover: 0 12px 36px rgba(29,78,216,0.10);
+      --radius-pill: 999px;
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --dur-fast: 150ms;
+      --dur-normal: 250ms;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== Layout ===== */
+    .app-layout {
+      display: grid; grid-template-columns: 280px 1fr;
+      grid-template-rows: auto 1fr auto; min-height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    .app-header {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 28px; gap: 16px;
+      background: var(--surface); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-xs); z-index: 100;
+    }
+    .app-header h1 {
+      font-size: 1.2rem; font-weight: 700; letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; color: var(--text-secondary);
+      position: relative;
+    }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: var(--radius-pill);
+      background: var(--accent-blue-light); cursor: pointer;
+      transition: background var(--dur-fast);
+      border: 1px solid transparent;
+    }
+    .status-pill:hover { background: var(--accent-blue-medium); }
+    .status-pill .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .status-pill .status-dot.online { background: var(--accent-green); box-shadow: 0 0 0 2px rgba(5,150,105,0.2); }
+    .status-pill .status-dot.offline { background: var(--accent-rose); box-shadow: 0 0 0 2px rgba(190,18,60,0.2); }
+    .status-pill .chevron {
+      font-size: 0.6rem; transition: transform var(--dur-fast);
+      color: var(--text-tertiary);
+    }
+    .status-pill.expanded .chevron { transform: rotate(180deg); }
+    .status-drawer {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--surface-raised); border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+      padding: 16px 20px; min-width: 280px; z-index: 200;
+      display: none;
+      animation: fadeSlideDown var(--dur-normal) var(--ease-out);
+    }
+    .status-drawer.open { display: block; }
+    .status-drawer-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; font-size: 0.82rem;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .status-drawer-row:last-child { border-bottom: none; }
+    .status-drawer-row .label { color: var(--text-tertiary); font-weight: 500; }
+    .status-drawer-row .value { color: var(--text); font-weight: 600; }
+    .mcp-controls { display: inline-flex; gap: 4px; margin-left: 8px; }
+    .mcp-controls button {
+      padding: 3px 10px; border: 1px solid var(--border-medium); border-radius: var(--radius-xs);
+      background: var(--surface-raised); font-size: 0.72rem; cursor: pointer;
+      color: var(--text-secondary); transition: all var(--dur-fast); font-weight: 600;
+    }
+    .mcp-controls button:hover {
+      background: var(--accent-blue-light); color: var(--accent-blue);
+      border-color: var(--accent-blue-medium);
+    }
+
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      background: var(--surface); backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border-soft);
+      padding: 0; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    .sidebar-group { border-bottom: 1px solid var(--border-soft); }
+    .sidebar-group:last-of-type { border-bottom: none; }
+    .sidebar-group-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      transition: background var(--dur-fast);
+    }
+    .sidebar-group-header:hover { background: rgba(0,0,0,0.02); }
+    .sidebar-group-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px;
+    }
+    .group-news .sidebar-group-label { color: var(--accent-blue); }
+    .group-compliance .sidebar-group-label { color: var(--accent-purple); }
+    .sidebar-group-chevron {
+      font-size: 0.65rem; color: var(--text-tertiary);
+      transition: transform var(--dur-normal) var(--ease-out); display: inline-block;
+    }
+    .sidebar-group.collapsed .sidebar-group-chevron { transform: rotate(-90deg); }
+    .sidebar-group-body {
+      padding: 0 10px 10px;
+      transition: opacity var(--dur-normal);
+    }
+    .sidebar-group.collapsed .sidebar-group-body { display: none; }
+    .sidebar-group-count {
+      font-size: 0.68rem; color: var(--text-tertiary);
+      background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 8px;
+      font-weight: 600;
+    }
+    .source-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px; border-radius: var(--radius-sm);
+      cursor: default; transition: background var(--dur-fast); font-size: 0.8rem; gap: 8px;
+    }
+    .source-item:hover { background: var(--accent-blue-light); }
+    .source-item.disabled-source { opacity: 0.5; }
+    .source-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-item .region-tag {
+      font-size: 0.62rem; padding: 2px 6px; border-radius: var(--radius-xs);
+      background: var(--accent-purple-light); color: var(--accent-purple);
+      font-weight: 700; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .sidebar-expand-btn {
+      display: block; width: 100%; padding: 6px 10px; margin-top: 4px;
+      border: none; background: none; font-size: 0.72rem; font-weight: 600;
+      color: var(--text-tertiary); cursor: pointer; text-align: center;
+      border-radius: var(--radius-xs); transition: all var(--dur-fast);
+    }
+    .sidebar-expand-btn:hover { color: var(--accent-blue); background: var(--accent-blue-light); }
+    .toggle {
+      position: relative; width: 36px; height: 20px;
+      background: #cbd5e1; border-radius: 10px;
+      cursor: pointer; transition: background var(--dur-normal); flex-shrink: 0;
+    }
+    .toggle.active { background: var(--accent-blue); }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; background: #fff; border-radius: 50%;
+      transition: transform var(--dur-normal) var(--ease-out);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle.active::after { transform: translateX(16px); }
+
+    /* ===== Schedule Task Cards ===== */
+    .sched-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: var(--radius-md);
+      background: var(--surface-raised); border: 1px solid var(--border-soft);
+      transition: box-shadow var(--dur-normal), transform var(--dur-normal);
+    }
+    .sched-card:hover { box-shadow: var(--shadow-soft); transform: translateY(-1px); }
+    .sched-card__info { flex: 1; min-width: 0; }
+    .sched-card__name {
+      font-weight: 600; font-size: 0.88rem; color: var(--text-primary);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .sched-card__name .lock-icon { cursor: pointer; font-size: 0.78rem; opacity: 0.5; transition: opacity var(--dur-fast); }
+    .sched-card__name .lock-icon:hover { opacity: 0.8; }
+    .sched-card__name .lock-icon.locked { opacity: 1; color: #f59e0b; }
+    .sched-card__desc {
+      font-size: 0.78rem; color: var(--text-tertiary); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sched-card__run { font-size: 0.72rem; color: var(--text-tertiary); margin-top: 4px; }
+    .sched-card__run .status-ok { color: var(--accent-green); font-weight: 600; }
+    .sched-card__run .status-err { color: #ef4444; font-weight: 600; }
+    .sched-card__actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .sched-card__actions button {
+      padding: 4px 8px; border: none; border-radius: var(--radius-xs);
+      font-size: 0.76rem; cursor: pointer; background: transparent;
+      color: var(--text-secondary); transition: all var(--dur-fast);
+    }
+    .sched-card__actions button:hover { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .sched-card__actions button.btn-danger:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
+    .sched-card__actions button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .sched-type-btn.active {
+      background: var(--accent-blue) !important; color: #fff !important;
+      border-color: var(--accent-blue) !important;
+    }
+    .day-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: var(--radius-pill); font-size: 0.8rem;
+      background: rgba(255,255,255,0.7); border: 1px solid var(--border-medium);
+      cursor: pointer; user-select: none; transition: all var(--dur-fast);
+    }
+    .day-chip:has(input:checked) {
+      background: var(--accent-blue); color: #fff; border-color: var(--accent-blue);
+    }
+    .day-chip input { display: none; }
+    .time-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: var(--radius-pill); font-size: 0.82rem;
+      background: var(--accent-blue-light); color: var(--accent-blue);
+      border: 1px solid var(--accent-blue-medium); font-weight: 600;
+    }
+    .time-tag .remove-time {
+      cursor: pointer; font-size: 0.72rem; opacity: 0.5; margin-left: 2px;
+      transition: all var(--dur-fast);
+    }
+    .time-tag .remove-time:hover { opacity: 1; color: #ef4444; }
+
+    /* ===== Recipient Groups ===== */
+    .rg-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: var(--radius-md);
+      background: var(--surface-raised); border: 1px solid var(--border-soft);
+      transition: box-shadow var(--dur-normal);
+    }
+    .rg-card:hover { box-shadow: var(--shadow-soft); }
+    .rg-card__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .rg-card__info { flex: 1; min-width: 0; }
+    .rg-card__name { font-weight: 600; font-size: 0.85rem; }
+    .rg-card__emails {
+      font-size: 0.75rem; color: var(--text-tertiary); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rg-card__actions { display: flex; gap: 4px; }
+    .rg-card__actions button {
+      padding: 4px 8px; border: none; border-radius: var(--radius-xs);
+      font-size: 0.76rem; cursor: pointer; background: transparent;
+      color: var(--text-secondary); transition: all var(--dur-fast);
+    }
+    .rg-card__actions button:hover { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .rg-card__actions button.btn-danger:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
+    .color-dot {
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+      border: 2.5px solid transparent; transition: border-color var(--dur-fast), transform var(--dur-fast);
+    }
+    .color-dot:hover { transform: scale(1.15); }
+    .color-dot.selected { border-color: var(--text-primary); }
+    .group-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: var(--radius-pill); font-size: 0.78rem;
+      cursor: pointer; user-select: none; transition: all var(--dur-fast);
+      border: 1.5px solid var(--border-medium); background: rgba(255,255,255,0.7);
+      font-weight: 500;
+    }
+    .group-chip:hover { border-color: var(--accent-blue-medium); }
+    .group-chip.selected { color: #fff; border-color: transparent; }
+    .group-chip .chip-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .rcpt-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .rcpt-row:last-child { border-bottom: none; }
+    .rcpt-row__email {
+      font-size: 0.82rem; font-weight: 500; min-width: 180px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rcpt-row__tags { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .rcpt-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 10px; border-radius: var(--radius-pill); font-size: 0.7rem;
+      color: #fff; cursor: pointer; font-weight: 500;
+      transition: opacity var(--dur-fast);
+    }
+    .rcpt-tag:hover { opacity: 0.85; }
+    .rcpt-tag .tag-x { font-size: 0.65rem; opacity: 0.7; margin-left: 2px; }
+    .rcpt-tag .tag-x:hover { opacity: 1; }
+    .sidebar-actions {
+      padding: 12px 16px; margin-top: auto;
+      display: flex; flex-direction: column; gap: 8px;
+      border-top: 1px solid var(--border-soft);
+    }
+
+    /* ===== Main Content ===== */
+    .main-content { padding: 28px 32px; overflow-y: auto; }
+    .main-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .main-toolbar h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.03em; }
+    .toolbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .news-count {
+      font-size: 0.8rem; color: var(--accent-blue);
+      background: var(--accent-blue-light); padding: 4px 14px;
+      border-radius: var(--radius-pill); font-weight: 700;
+    }
+    .search-box {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface-raised); border: 1px solid var(--border-medium);
+      border-radius: var(--radius-pill); padding: 6px 14px;
+      transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+      flex: 1; max-width: 320px; min-width: 180px;
+    }
+    .search-box:focus-within {
+      border-color: rgba(29,78,216,0.4);
+      box-shadow: 0 0 0 3px rgba(29,78,216,0.1);
+    }
+    .search-box .search-icon { font-size: 0.85rem; color: var(--text-tertiary); flex-shrink: 0; }
+    .search-box input {
+      border: none; background: transparent; outline: none;
+      font-size: 0.82rem; color: var(--text); width: 100%;
+      font-family: inherit;
+    }
+    .search-box input::placeholder { color: var(--text-tertiary); }
+    .search-box .search-clear {
+      font-size: 0.7rem; color: var(--text-tertiary); cursor: pointer;
+      padding: 2px 4px; border-radius: 50%; flex-shrink: 0;
+      transition: all var(--dur-fast); display: none;
+    }
+    .search-box .search-clear.visible { display: block; }
+    .search-box .search-clear:hover { color: var(--accent-rose); background: rgba(190,18,60,0.08); }
+
+    /* ===== Group Filter Tabs ===== */
+    .group-tabs {
+      display: flex; gap: 4px; margin-bottom: 16px;
+      background: rgba(0,0,0,0.035); border-radius: var(--radius-pill); padding: 4px;
+    }
+    .group-tab {
+      padding: 8px 20px; border: none; background: transparent;
+      border-radius: var(--radius-pill); font-size: 0.84rem; font-weight: 600;
+      cursor: pointer; color: var(--text-tertiary); transition: all var(--dur-normal) var(--ease-out);
+      white-space: nowrap;
+    }
+    .group-tab:hover { color: var(--text-secondary); }
+    .group-tab.active {
+      background: var(--surface-raised); color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .group-tab .tab-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 22px; height: 19px; padding: 0 6px;
+      border-radius: 10px; font-size: 0.7rem; font-weight: 700; margin-left: 6px;
+    }
+    .group-tab.g-all .tab-count { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .group-tab.g-news .tab-count { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .group-tab.g-compliance .tab-count { background: var(--accent-purple-light); color: var(--accent-purple); }
+
+    /* ===== Source Filter Tabs ===== */
+    .view-tabs {
+      display: flex; gap: 6px; margin-bottom: 20px;
+      overflow-x: auto; padding: 4px 0;
+    }
+    .view-tab {
+      padding: 6px 14px; border: 1px solid var(--border-medium); background: var(--surface-raised);
+      border-radius: var(--radius-pill); font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; color: var(--text-tertiary); transition: all var(--dur-fast);
+      white-space: nowrap;
+    }
+    .view-tab:hover { color: var(--text-secondary); border-color: var(--accent-blue-medium); }
+    .view-tab.active {
+      background: var(--accent-blue); color: #fff; border-color: var(--accent-blue);
+    }
+    .view-tab.compliance.active { background: var(--accent-purple); border-color: var(--accent-purple); }
+    .view-tab .tab-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 17px; padding: 0 5px;
+      border-radius: 9px; background: rgba(0,0,0,0.06);
+      font-size: 0.68rem; font-weight: 700; margin-left: 5px;
+    }
+    .view-tab.active .tab-badge { background: rgba(255,255,255,0.25); color: #fff; }
+
+    /* ===== Collapsible Section ===== */
+    .news-section { margin-bottom: 28px; }
+    .news-section-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; cursor: pointer; user-select: none;
+      background: rgba(0,0,0,0.02); border-radius: var(--radius-md);
+      margin-bottom: 16px; transition: background var(--dur-fast);
+    }
+    .news-section-header:hover { background: rgba(0,0,0,0.04); }
+    .news-section-header h3 { font-size: 0.95rem; flex: 1; font-weight: 700; }
+    .news-section-header .section-chevron {
+      font-size: 0.75rem; color: var(--text-tertiary);
+      transition: transform var(--dur-normal) var(--ease-out); display: inline-block;
+    }
+    .news-section.collapsed .section-chevron { transform: rotate(-90deg); }
+    .news-section.collapsed .news-section-body { display: none; }
+    .section-badge {
+      font-size: 0.72rem; padding: 3px 10px; border-radius: 8px; font-weight: 700;
+    }
+    .section-badge.news-badge { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .section-badge.compliance-badge { background: var(--accent-purple-light); color: var(--accent-purple); }
+
+    /* ===== Digest Panel ===== */
+    .digest-panel {
+      background: linear-gradient(135deg, rgba(29,78,216,0.03), rgba(8,145,178,0.03));
+      border: 1px solid rgba(29,78,216,0.1);
+      border-radius: var(--radius-xl); padding: 28px 32px; margin-bottom: 28px;
+      position: relative;
+    }
+    .digest-panel::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    .digest-section-title {
+      font-size: 1.05rem; margin-bottom: 18px; letter-spacing: -0.02em; font-weight: 700;
+    }
+    .digest-section-title.news-title { color: var(--accent-blue); }
+    .digest-section-title.compliance-title { color: var(--accent-purple); }
+    .digest-section-title .dpo-tag {
+      font-size: 0.65em; font-weight: 500; opacity: 0.6;
+      margin-left: 4px;
+    }
+    .digest-divider {
+      border: none; border-top: 1px solid var(--border-soft);
+      margin: 24px 0;
+    }
+    .digest-item {
+      display: flex; gap: 16px; padding: 14px 0;
+      border-bottom: 1px solid var(--border-soft);
+      transition: background var(--dur-fast);
+    }
+    .digest-item:last-child { border-bottom: none; }
+    .digest-item:hover { background: rgba(29,78,216,0.02); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: var(--radius-sm); }
+    .digest-rank {
+      display: flex; align-items: center; justify-content: center;
+      min-width: 30px; height: 30px; border-radius: 50%;
+      font-weight: 800; font-size: 0.8rem; color: #fff; flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .digest-rank.top3 { background: linear-gradient(135deg, #dc2626, #ef4444); box-shadow: 0 2px 8px rgba(220,38,38,0.3); }
+    .digest-rank.top6 { background: linear-gradient(135deg, var(--accent-amber), #f59e0b); }
+    .digest-rank.rest { background: linear-gradient(135deg, var(--accent-blue), #3b82f6); }
+    .digest-body { flex: 1; min-width: 0; }
+    .digest-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 6px; line-height: 1.5; }
+    .digest-title a { color: var(--text); text-decoration: none; transition: color var(--dur-fast); }
+    .digest-title a:hover { color: var(--accent-blue); }
+    .digest-summary { font-size: 0.84rem; color: var(--text-secondary); line-height: 1.65; }
+    .digest-sources { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 6px; }
+    .digest-related {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px dashed rgba(15,23,42,0.08);
+    }
+    .digest-related-label {
+      font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .digest-related-list {
+      list-style: none; display: flex; flex-direction: column; gap: 6px;
+    }
+    .digest-related-item {
+      font-size: 0.8rem; line-height: 1.45; color: var(--text-secondary);
+    }
+    .digest-related-item a {
+      color: var(--accent-blue); text-decoration: none; font-weight: 600;
+    }
+    .digest-related-item a:hover { text-decoration: underline; }
+    .digest-related-meta {
+      display: inline-block; margin-left: 6px; font-size: 0.72rem;
+      color: var(--text-tertiary);
+    }
+    .sev-badge {
+      display: inline-block; padding: 2px 8px; border-radius: var(--radius-xs);
+      font-size: 0.68rem; font-weight: 700; color: #fff; margin-right: 8px;
+      vertical-align: middle;
+    }
+    .sev-badge.sev-high { background: #ef4444; }
+    .sev-badge.sev-medium { background: #f59e0b; }
+    .sev-badge.sev-low { background: var(--accent-green); }
+
+    /* ===== News Grid ===== */
+    .news-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;
+    }
+    .news-card {
+      padding: 20px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      background: var(--surface-raised);
+      box-shadow: var(--shadow-xs);
+      transition: box-shadow var(--dur-normal) var(--ease-out), transform var(--dur-normal) var(--ease-out);
+    }
+    .news-card:hover {
+      box-shadow: var(--shadow-card-hover);
+      transform: translateY(-3px);
+    }
+    .news-card__source {
+      display: inline-flex; min-height: 22px; padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 0.67rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+    }
+    .news-card__source.source-news { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .news-card__source.source-compliance { background: var(--accent-purple-light); color: var(--accent-purple); }
+    .news-card__title { font-size: 0.9rem; font-weight: 700; margin-bottom: 8px; line-height: 1.5; }
+    .news-card__title a { color: var(--text); text-decoration: none; transition: color var(--dur-fast); }
+    .news-card__title a:hover { color: var(--accent-blue); }
+    .news-card__summary { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.65; }
+    .news-card__meta {
+      margin-top: 10px; font-size: 0.74rem; color: var(--text-tertiary);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .history-card-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    .fav-btn {
+      border: 1px solid var(--border-medium);
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 10px;
+      padding: 4px 10px;
+      font-size: 0.74rem;
+      cursor: pointer;
+    }
+    .fav-btn.active {
+      border-color: #f59e0b;
+      background: rgba(245,158,11,0.12);
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    /* ===== Pagination ===== */
+    .pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; margin-top: 28px; padding: 12px 0;
+    }
+    .page-btn {
+      min-width: 36px; height: 36px; border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm); background: var(--surface-raised);
+      cursor: pointer; font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--dur-fast); color: var(--text-secondary);
+    }
+    .page-btn:hover { background: var(--accent-blue-light); border-color: var(--accent-blue-medium); color: var(--accent-blue); }
+    .page-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .page-info { font-size: 0.82rem; color: var(--text-tertiary); margin: 0 10px; }
+
+    .news-empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 80px 40px;
+      color: var(--text-tertiary); text-align: center;
+    }
+    .news-empty .icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+    .news-empty p { font-size: 0.9rem; }
+
+    /* ===== Footer ===== */
+    .app-footer {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 28px; background: var(--surface);
+      border-top: 1px solid var(--border-soft);
+      font-size: 0.78rem; color: var(--text-tertiary);
+    }
+    .footer-actions { display: flex; gap: 10px; }
+
+    /* ===== Buttons ===== */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 18px; border: none; border-radius: var(--radius-pill);
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      transition: all var(--dur-normal) var(--ease-out); white-space: nowrap;
+      position: relative; overflow: hidden;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; }
+    .btn-primary:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(15,23,42,0.25); transform: translateY(-1px); }
+    .btn-blue { background: linear-gradient(135deg, var(--accent-blue), #3b82f6); color: #fff; }
+    .btn-blue:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(29,78,216,0.35); transform: translateY(-1px); }
+    .btn-secondary { background: var(--accent-blue-light); color: var(--accent-blue); }
+    .btn-secondary:hover:not(:disabled) { background: var(--accent-blue-medium); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-medium); }
+    .btn-ghost:hover:not(:disabled) { background: rgba(0,0,0,0.03); border-color: var(--accent-blue-medium); }
+    .btn-ghost.active { color: var(--accent-blue); border-color: var(--accent-blue-medium); background: rgba(37,99,235,0.08); }
+    .btn-green { background: linear-gradient(135deg, var(--accent-green), #10b981); color: #fff; }
+    .btn-green:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(5,150,105,0.35); transform: translateY(-1px); }
+    .btn-amber { background: rgba(217,119,6,0.1); color: var(--accent-amber); font-weight: 700; }
+    .btn-amber:hover:not(:disabled) { background: rgba(217,119,6,0.18); }
+    .btn-rose { background: linear-gradient(135deg, #e11d48, #be123c); color: #fff; }
+    .btn-rose:hover:not(:disabled) { box-shadow: 0 4px 20px rgba(225,29,72,0.35); transform: translateY(-1px); }
+    .btn-sm { padding: 6px 14px; font-size: 0.78rem; }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn.is-loading { pointer-events: none; }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.45); backdrop-filter: blur(8px);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); backdrop-filter: blur(20px);
+      border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
+      width: 640px; max-width: 94vw; max-height: 88vh;
+      overflow: hidden; display: flex; flex-direction: column;
+      animation: modalIn var(--dur-normal) var(--ease-out);
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; border-bottom: 1px solid var(--border-soft);
+    }
+    .modal-header h2 { font-size: 1.1rem; font-weight: 700; }
+    .modal-close, .btn-close {
+      width: 32px; height: 32px; border: none; background: rgba(0,0,0,0.04);
+      border-radius: 50%; cursor: pointer; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--dur-fast);
+      color: var(--text-secondary);
+    }
+    .modal-close:hover, .btn-close:hover { background: rgba(0,0,0,0.08); }
+    .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--border-soft);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+    .tabs {
+      display: flex; gap: 3px; margin-bottom: 20px;
+      background: rgba(0,0,0,0.035); border-radius: var(--radius-pill); padding: 4px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 8px 16px; border: none; background: transparent;
+      border-radius: var(--radius-pill); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; color: var(--text-tertiary); transition: all var(--dur-normal) var(--ease-out);
+    }
+    .tab:hover { color: var(--text-secondary); }
+    .tab.active { background: var(--surface-raised); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn var(--dur-normal); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+    .form-control {
+      width: 100%; border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm); background: var(--surface-raised);
+      padding: 10px 14px; font-size: 0.88rem; font-family: inherit; color: var(--text);
+      transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+    }
+    .form-control:focus { outline: none; border-color: rgba(29,78,216,0.4); box-shadow: 0 0 0 3px rgba(29,78,216,0.1); }
+    .form-hint { margin-top: 4px; font-size: 0.76rem; color: var(--text-tertiary); }
+    .prompt-editor {
+      padding: 14px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+    }
+    .prompt-editor__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .prompt-editor__textarea {
+      margin-top: 10px;
+      min-height: 52px;
+      resize: vertical;
+      line-height: 1.5;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+    }
+    .prompt-editor__status {
+      margin-top: 8px;
+    }
+    .send-target-hint {
+      margin-top: 6px;
+      font-size: 0.76rem;
+      color: var(--text-tertiary);
+    }
+    .source-limit-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--border-soft);
+      font-size: 0.82rem;
+    }
+    .source-limit-row:last-child { border-bottom: none; }
+    .source-limit-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-limit-row .num-wrap {
+      display: inline-flex; align-items: center; gap: 6px; color: var(--text-tertiary);
+      font-size: 0.74rem; flex-shrink: 0;
+    }
+    .source-limit-row input[type="number"] {
+      width: 64px; padding: 5px 8px; border: 1px solid var(--border-medium);
+      border-radius: var(--radius-xs); font-size: 0.82rem; text-align: center;
+    }
+    .source-batch-panel {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+    .source-batch-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .source-batch-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-tertiary);
+      font-size: 0.74rem;
+    }
+    .source-batch-item input[type="number"] {
+      width: 72px;
+      padding: 5px 8px;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-xs);
+      font-size: 0.82rem;
+      text-align: center;
+      background: var(--surface-raised);
+      color: var(--text);
+    }
+    .source-batch-item input[type="date"] {
+      padding: 5px 8px;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-xs);
+      font-size: 0.78rem;
+      background: var(--surface-raised);
+      color: var(--text);
+    }
+    .source-batch-apply {
+      border: 1px solid var(--border-medium);
+      background: var(--surface-raised);
+      border-radius: var(--radius-xs);
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: all var(--dur-fast);
+    }
+    .source-batch-apply:hover {
+      border-color: rgba(29,78,216,0.4);
+      color: var(--accent-blue);
+    }
+    .source-batch-range-hint {
+      margin-top: 8px;
+      font-size: 0.74rem;
+      color: var(--text-tertiary);
+    }
+    .source-batch-range-hint.success { color: var(--accent-green); }
+    .source-batch-range-hint.error { color: var(--accent-rose); }
+
+    /* ===== Toast ===== */
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 20px; border-radius: var(--radius-md);
+      background: var(--surface-raised); box-shadow: var(--shadow-lg);
+      font-size: 0.84rem; animation: toastIn 350ms var(--ease-out);
+      display: flex; align-items: center; gap: 8px; max-width: 400px;
+      border: 1px solid var(--border-soft);
+    }
+    .toast.success { border-left: 4px solid var(--accent-green); }
+    .toast.error { border-left: 4px solid var(--accent-rose); }
+    .toast.info { border-left: 4px solid var(--accent-blue); }
+    @keyframes toastIn {
+      from { transform: translateX(100%) scale(0.9); opacity: 0; }
+      to { transform: translateX(0) scale(1); opacity: 1; }
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+      border-radius: 50%; animation: spin 600ms linear infinite; display: inline-block;
+    }
+    .spinner.spinner-dark {
+      border-color: rgba(29,78,216,0.2); border-top-color: var(--accent-blue);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== Reduced Motion ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .app-layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border-soft); max-height: 35vh; }
+      .main-content { padding: 20px 16px; }
+      .news-grid { grid-template-columns: 1fr; }
+      .search-box { max-width: 100%; min-width: 0; }
+      .app-header { padding: 12px 16px; }
+      .app-footer { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <header class="app-header">
+    <h1>News Alert</h1>
+    <div class="header-status">
+      <div class="status-pill" id="statusPill" onclick="toggleStatusDrawer()">
+        <span class="status-dot" id="mcpDot"></span>
+        <span id="statusSummary">系统就绪</span>
+        <span class="chevron">&#9662;</span>
+      </div>
+      <div class="status-drawer" id="statusDrawer">
+        <div class="status-drawer-row">
+          <span class="label">MCP 服务</span>
+          <span class="value">
+            <span id="mcpStatus">...</span>
+            <span class="mcp-controls">
+              <button onclick="mcpAction('start')" title="启动">ON</button>
+              <button onclick="mcpAction('stop')" title="停止">OFF</button>
+              <button onclick="mcpAction('restart')" title="重启">RST</button>
+            </span>
+          </span>
+        </div>
+        <div class="status-drawer-row">
+          <span class="label">定时任务</span>
+          <span class="value" id="scheduleStatus">未启用</span>
+        </div>
+        <div class="status-drawer-row">
+          <span class="label">上次抓取</span>
+          <span class="value" id="lastFetch">-</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-group group-news" id="sidebarNewsGroup">
+      <div class="sidebar-group-header">
+        <span class="sidebar-group-label" onclick="toggleSidebarGroup('news')" style="cursor:pointer;flex:1;">
+          新闻订阅源 <span class="sidebar-group-count" id="newsSourceCount">0</span>
+          <span class="sidebar-group-chevron">&#9660;</span>
+        </span>
+        <div class="toggle active" id="toggleAllNews" onclick="toggleAllNewsSources()" title="全选/取消"></div>
+      </div>
+      <div class="sidebar-group-body" id="newsSourceList">
+        <div class="source-item" style="justify-content:center;color:var(--text-tertiary);font-size:0.82rem;">加载中...</div>
+      </div>
+    </div>
+
+    <div class="sidebar-group group-compliance" id="sidebarComplianceGroup">
+      <div class="sidebar-group-header">
+        <span class="sidebar-group-label" onclick="toggleSidebarGroup('compliance')" style="cursor:pointer;flex:1;">
+          合规订阅源 <span class="sidebar-group-count" id="complianceSourceCount">0</span>
+          <span class="sidebar-group-chevron">&#9660;</span>
+        </span>
+        <div class="toggle active" id="toggleAllCompliance" onclick="toggleAllComplianceSources()" title="全选/取消"></div>
+      </div>
+      <div class="sidebar-group-body" id="complianceSourceList">
+        <div class="source-item" style="justify-content:center;color:var(--text-tertiary);font-size:0.82rem;">加载中...</div>
+      </div>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="btn btn-ghost btn-full btn-sm" onclick="openSettings()">设置</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="main-toolbar">
+      <h2>新闻资讯</h2>
+      <div class="search-box">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="searchInput" placeholder="搜索新闻标题..." oninput="handleSearch(this.value)">
+        <span class="search-clear" id="searchClear" onclick="clearSearch()">&#10005;</span>
+      </div>
+      <div class="toolbar-actions">
+        <span class="news-count" id="newsCount">0 条</span>
+        <button class="btn btn-ghost btn-sm active" id="btnViewLatest" onclick="showLatestView()">最新</button>
+        <button class="btn btn-ghost btn-sm" id="btnViewHistory" onclick="showHistoryView()">历史</button>
+        <button class="btn btn-blue btn-sm" id="btnFetch" onclick="fetchNews()">抓取新闻</button>
+        <button class="btn btn-rose btn-sm" id="btnDigest" onclick="generateDigest()" disabled>AI Top10</button>
+      </div>
+    </div>
+
+    <div class="digest-panel" id="digestPanel" style="display:none;">
+      <div id="newsDigestSection" style="display:none;">
+        <h3 class="digest-section-title news-title">今日新闻热点 Top 10</h3>
+        <div id="newsDigestList"></div>
+      </div>
+      <div id="complianceDigestSection" style="display:none;">
+        <hr class="digest-divider" id="digestDivider" style="display:none;">
+        <h3 class="digest-section-title compliance-title">Privacy &amp; AI Compliance Top 10 <span class="dpo-tag">(DPO)</span></h3>
+        <div id="complianceDigestList"></div>
+        <div id="communityPulseSection" style="display:none;margin-top:14px;">
+          <h3 class="digest-section-title compliance-title" style="font-size:0.95rem;">Bambu Lab 社区舆情总结（隐私/安全）</h3>
+          <div id="communityPulseContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group-tabs" id="groupTabs" style="display:none;"></div>
+    <div class="view-tabs" id="viewTabs" style="display:none;"></div>
+
+    <div id="newsContainer">
+      <div class="news-empty">
+        <div class="icon">&#128225;</div>
+        <p>点击「抓取新闻」开始获取资讯</p>
+      </div>
+    </div>
+
+    <div class="pagination" id="pagination" style="display:none;"></div>
+  </main>
+
+  <footer class="app-footer">
+    <span>News Alert v2.0</span>
+    <div class="footer-actions">
+      <button class="btn btn-ghost btn-sm" id="btnExport" onclick="exportTxt()" disabled>导出 TXT</button>
+      <button class="btn btn-green btn-sm" id="btnSendEmail" onclick="sendEmailNow()" disabled>发送邮件</button>
+      <button class="btn btn-blue btn-sm" id="btnSendWebhook" onclick="sendWebhookNow()" disabled>发送 Webhook</button>
+    </div>
+  </footer>
+</div>
+
+<!-- Send Target Modal -->
+<div class="modal-overlay" id="sendTargetModal" style="z-index:1100;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h2>选择收件人组</h2>
+      <button class="btn-close" onclick="closeSendTargetModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" style="color:var(--accent-blue);">新闻 Top10 推送至</label>
+        <div id="sendNewsGroups" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:var(--accent-purple);">合规 Top10 推送至</label>
+        <div id="sendComplianceGroups" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div class="send-target-hint">默认不勾选，请手动选择收件人组后再发送。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeSendTargetModal()">取消</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmSendEmail()">确认发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>系统设置</h2>
+      <button class="modal-close" onclick="closeSettings()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('ai', this)">AI 配置</button>
+        <button class="tab" onclick="switchTab('email', this)">邮箱</button>
+        <button class="tab" onclick="switchTab('recipients', this)">收件人</button>
+        <button class="tab" onclick="switchTab('schedule', this)">定时 / 自启</button>
+        <button class="tab" onclick="switchTab('sources', this)">数据源管理</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-ai">
+        <div class="form-group">
+          <label class="form-label">Base URL</label>
+          <input type="text" class="form-control" id="aiBaseUrl" placeholder="https://api.example.com">
+          <div class="form-hint">OpenAI 兼容 API 地址</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model Name</label>
+          <input type="text" class="form-control" id="aiModelName" placeholder="gpt-4o-mini">
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input type="password" class="form-control" id="aiApiKey" placeholder="sk-...">
+        </div>
+        <hr style="margin:18px 0;border:none;border-top:1px solid var(--border-soft);">
+        <div class="form-group">
+          <div class="prompt-editor__header">
+            <label class="form-label" style="margin:0;">AI Top10 Prompt 管理</label>
+            <button class="btn btn-ghost btn-sm" onclick="resetAllPromptFields()">恢复全部默认</button>
+          </div>
+          <div class="form-hint">系统默认 Prompt 已内置，下方直接显示当前生效 Prompt。你可以在此修改，保存后覆盖运行时摘要 Prompt。</div>
+          <div class="form-hint">必须保留 `{{itemCount}}` 和 `{{titleList}}` 占位符，否则无法生成摘要。</div>
+        </div>
+        <div class="form-group prompt-editor">
+          <div class="prompt-editor__header">
+            <label class="form-label" style="margin:0;">新闻订阅源 Top10 Prompt</label>
+            <button class="btn btn-ghost btn-sm" onclick="resetPromptField('newsTop10Prompt')">恢复默认</button>
+          </div>
+          <div class="form-hint">下方显示当前生效 Prompt；如果你没有自定义，这里显示的是系统默认 Prompt。</div>
+          <textarea class="form-control prompt-editor__textarea" id="newsTop10Prompt" rows="1" placeholder="默认 Prompt 加载中..." oninput="updatePromptStatus('newsTop10Prompt')"></textarea>
+          <div class="form-hint prompt-editor__status" id="newsTop10PromptStatus">默认 Prompt 加载中...</div>
+        </div>
+        <div class="form-group prompt-editor">
+          <div class="prompt-editor__header">
+            <label class="form-label" style="margin:0;">合规订阅源 Top10 Prompt</label>
+            <button class="btn btn-ghost btn-sm" onclick="resetPromptField('complianceTop10Prompt')">恢复默认</button>
+          </div>
+          <div class="form-hint">下方显示当前生效 Prompt；如果你没有自定义，这里显示的是系统默认 Prompt。</div>
+          <textarea class="form-control prompt-editor__textarea" id="complianceTop10Prompt" rows="1" placeholder="默认 Prompt 加载中..." oninput="updatePromptStatus('complianceTop10Prompt')"></textarea>
+          <div class="form-hint prompt-editor__status" id="complianceTop10PromptStatus">默认 Prompt 加载中...</div>
+        </div>
+        <hr style="margin:18px 0;border:none;border-top:1px solid var(--border-soft);">
+        <div class="form-group">
+          <label class="form-label">Webhook（飞书）</label>
+          <input type="text" class="form-control" id="webhookUrl" placeholder="https://www.feishu.cn/flow/api/trigger-webhook/xxxx 或 https://open.feishu.cn/open-apis/bot/v2/hook/xxxx">
+          <div class="form-hint">用于接收合规 AI 总结，支持飞书 Flow Trigger Webhook 和飞书机器人 Webhook。</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">链接显示样式</label>
+          <select class="form-control" id="webhookLinkRenderMode">
+            <option value="markdown">Markdown（原文: [点此查看](URL)）</option>
+            <option value="plain">纯文本（原文: 点此查看: URL）</option>
+          </select>
+          <div class="form-hint">默认 Markdown；若 Flow 节点不渲染超链接，请切换为纯文本模式。</div>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <label class="form-label" style="margin:0;">启用 Webhook 推送</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="checkbox" id="webhookEnabled" style="width:16px;height:16px;">
+            <button class="btn btn-ghost btn-sm" onclick="testWebhook()">测试发送</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-email">
+        <div class="form-group">
+          <label class="form-label">SMTP 服务器</label>
+          <input type="text" class="form-control" id="emailSmtpHost" placeholder="smtp.163.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">SMTP 端口</label>
+          <input type="number" class="form-control" id="emailSmtpPort" placeholder="465">
+        </div>
+        <div class="form-group">
+          <label class="form-label">发件邮箱</label>
+          <input type="email" class="form-control" id="emailSender" placeholder="you@163.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">SMTP 授权码</label>
+          <input type="password" class="form-control" id="emailPassword" placeholder="授权码（非登录密码）">
+          <div class="form-hint">163 邮箱需在设置中开启 SMTP 并获取授权码</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-recipients">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <label class="form-label" style="margin:0;">收件人组</label>
+          <button class="btn btn-blue btn-sm" onclick="openGroupEditor()">+ 新建组</button>
+        </div>
+        <div id="recipientGroupList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          <div style="color:var(--text-tertiary);font-size:0.82rem;">暂无收件人组</div>
+        </div>
+
+        <div id="groupEditorPanel" style="display:none;padding:18px;background:var(--accent-blue-light);border:1px solid var(--accent-blue-medium);border-radius:var(--radius-md);margin-bottom:20px;">
+          <input type="hidden" id="groupEditId">
+          <div class="form-group">
+            <label class="form-label">组名称</label>
+            <input type="text" class="form-control" id="groupName" placeholder="例如：新闻订阅组">
+          </div>
+          <div class="form-group">
+            <label class="form-label">标识颜色</label>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              <span class="color-dot" data-color="#2563eb" style="background:#2563eb;" onclick="pickGroupColor('#2563eb')"></span>
+              <span class="color-dot" data-color="#7c3aed" style="background:#7c3aed;" onclick="pickGroupColor('#7c3aed')"></span>
+              <span class="color-dot" data-color="#059669" style="background:#059669;" onclick="pickGroupColor('#059669')"></span>
+              <span class="color-dot" data-color="#d97706" style="background:#d97706;" onclick="pickGroupColor('#d97706')"></span>
+              <span class="color-dot" data-color="#e11d48" style="background:#e11d48;" onclick="pickGroupColor('#e11d48')"></span>
+              <span class="color-dot" data-color="#6366f1" style="background:#6366f1;" onclick="pickGroupColor('#6366f1')"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">组内邮箱</label>
+            <textarea class="form-control" id="groupEmails" rows="3" placeholder="每行一个邮箱，或用逗号分隔&#10;a@company.com&#10;b@company.com"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button class="btn btn-primary btn-sm" onclick="saveGroup()">保存</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelGroupEditor()">取消</button>
+          </div>
+        </div>
+
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-soft);">
+        <label class="form-label">收件人视角</label>
+        <div class="form-hint" style="margin-bottom:10px;">查看每位收件人所属的组，点击标签可从该组移除</div>
+        <div id="recipientCentricView" style="display:flex;flex-direction:column;gap:4px;">
+          <div style="color:var(--text-tertiary);font-size:0.82rem;">暂无收件人</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-schedule">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <label class="form-label" style="margin:0;">定时推送任务</label>
+          <button class="btn btn-blue btn-sm" onclick="openTaskEditor()">+ 新建任务</button>
+        </div>
+        <div id="scheduleTaskList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+          <div style="color:var(--text-tertiary);font-size:0.82rem;">暂无定时任务</div>
+        </div>
+
+        <div id="taskEditorPanel" style="display:none;padding:18px;background:var(--accent-blue-light);border:1px solid var(--accent-blue-medium);border-radius:var(--radius-md);margin-bottom:20px;">
+          <input type="hidden" id="taskEditId">
+          <div class="form-group">
+            <label class="form-label">任务名称</label>
+            <input type="text" class="form-control" id="taskName" placeholder="例如：每日早报">
+          </div>
+          <div class="form-group">
+            <label class="form-label">执行频率</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+              <button class="btn btn-ghost btn-sm sched-type-btn" data-type="daily" onclick="setSchedType('daily')">每天定时</button>
+              <button class="btn btn-ghost btn-sm sched-type-btn" data-type="interval" onclick="setSchedType('interval')">固定间隔</button>
+              <button class="btn btn-ghost btn-sm sched-type-btn" data-type="weekly" onclick="setSchedType('weekly')">每周指定</button>
+            </div>
+          </div>
+
+          <div class="sched-detail" id="schedDetail-daily" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">执行时间</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;" id="dailyTimeList"></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                <input type="time" class="form-control" id="dailyTimeInput" style="width:130px;">
+                <button class="btn btn-secondary btn-sm" onclick="addDailyTime()">添加</button>
+              </div>
+              <div class="form-hint">可添加多个时间点，每天在这些时间执行</div>
+            </div>
+          </div>
+
+          <div class="sched-detail" id="schedDetail-interval" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">执行间隔</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <span style="font-size:0.85rem;color:var(--text-secondary);">每</span>
+                <input type="number" class="form-control" id="intervalHours" min="1" max="24" value="6" style="width:70px;text-align:center;">
+                <span style="font-size:0.85rem;color:var(--text-secondary);">小时执行一次</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sched-detail" id="schedDetail-weekly" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">选择星期</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                <label class="day-chip"><input type="checkbox" value="1" class="weekday-cb"> 一</label>
+                <label class="day-chip"><input type="checkbox" value="2" class="weekday-cb"> 二</label>
+                <label class="day-chip"><input type="checkbox" value="3" class="weekday-cb"> 三</label>
+                <label class="day-chip"><input type="checkbox" value="4" class="weekday-cb"> 四</label>
+                <label class="day-chip"><input type="checkbox" value="5" class="weekday-cb"> 五</label>
+                <label class="day-chip"><input type="checkbox" value="6" class="weekday-cb"> 六</label>
+                <label class="day-chip"><input type="checkbox" value="0" class="weekday-cb"> 日</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">执行时间</label>
+              <input type="time" class="form-control" id="weeklyTime" value="08:00" style="width:130px;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label class="form-label" style="color:var(--accent-blue);">新闻推送至</label>
+            <div id="taskNewsGroups" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+            <div class="form-hint">选择接收新闻 Top10 的收件人组</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="color:var(--accent-purple);">合规推送至</label>
+            <div id="taskComplianceGroups" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+            <div class="form-hint">选择接收合规 Top10（DPO 视角）的收件人组</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Webhook 推送</label>
+            <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;">
+              <input type="checkbox" id="taskSendWebhook" checked>
+              同步发送合规 AI 总结到 Webhook
+            </label>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button class="btn btn-primary btn-sm" onclick="saveTask()">保存任务</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelTaskEditor()">取消</button>
+          </div>
+        </div>
+
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-soft);">
+        <div class="form-group">
+          <label class="form-label">开机自启动</label>
+          <div class="form-hint" style="margin-bottom:10px;">登录 Windows 后自动在后台启动服务（无黑框）</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="toggle" id="autostartToggle" onclick="toggleAutostart()"></div>
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="autostartLabel">检测中...</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">后台服务</label>
+          <div class="form-hint" style="margin-bottom:10px;">可查看守护进程状态、重启服务，并直接查看最近日志</div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+            <span style="font-size:0.85rem;color:var(--text-secondary);" id="serviceStatusLabel">检测中...</span>
+            <button class="btn btn-secondary btn-sm" onclick="startBackgroundService()">启动后台</button>
+            <button class="btn btn-secondary btn-sm" onclick="restartBackgroundService()">重启后台</button>
+            <button class="btn btn-ghost btn-sm" onclick="stopBackgroundService()">停止后台</button>
+            <button class="btn btn-ghost btn-sm" onclick="refreshServiceLogs()">刷新日志</button>
+          </div>
+          <div id="serviceLogsPanel" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <div class="form-hint" style="margin-bottom:6px;">startup / autostart</div>
+              <pre id="serviceAutostartLog" style="margin:0;max-height:120px;overflow:auto;padding:12px;border-radius:12px;background:rgba(15,23,42,0.78);color:#bfdbfe;font-size:12px;line-height:1.45;">暂无启动日志</pre>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:6px;">stdout</div>
+              <pre id="serviceStdoutLog" style="margin:0;max-height:160px;overflow:auto;padding:12px;border-radius:12px;background:rgba(15,23,42,0.78);color:#dbeafe;font-size:12px;line-height:1.45;">暂无日志</pre>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:6px;">stderr</div>
+              <pre id="serviceStderrLog" style="margin:0;max-height:120px;overflow:auto;padding:12px;border-radius:12px;background:rgba(15,23,42,0.78);color:#fecaca;font-size:12px;line-height:1.45;">暂无日志</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-sources">
+        <div class="form-hint" style="margin-bottom:14px;">设置每个数据源的拉取数量上限与时间窗口（recentDays，单位：天）</div>
+        <h4 style="font-size:0.82rem;color:var(--accent-blue);margin-bottom:10px;font-weight:700;">新闻订阅源</h4>
+        <div class="source-batch-panel">
+          <div class="source-batch-row">
+            <span class="source-batch-item">limit <input type="number" min="0" max="200" id="newsBatchLimit" placeholder="统一值"></span>
+            <span class="source-batch-item">days <input type="number" min="1" max="365" id="newsBatchDays" placeholder="统一值"></span>
+            <span class="source-batch-item">开始 <input type="date" id="newsBatchStartDate" onchange="syncBatchDaysFromDateRange('news')"></span>
+            <span class="source-batch-item">结束 <input type="date" id="newsBatchEndDate" onchange="syncBatchDaysFromDateRange('news')"></span>
+            <button type="button" id="newsBatchApplyBtn" class="source-batch-apply" onclick="applyBatchSourceValues('news')">应用到全部新闻源</button>
+          </div>
+          <div class="source-batch-range-hint info" id="newsBatchRangeHint">选择起止日期后将自动计算 days，也可直接填写 days。</div>
+        </div>
+        <div id="settingsNewsSources"></div>
+        <h4 style="font-size:0.82rem;color:var(--accent-purple);margin:20px 0 10px;font-weight:700;">合规订阅源</h4>
+        <div class="source-batch-panel">
+          <div class="source-batch-row">
+            <span class="source-batch-item">limit <input type="number" min="0" max="100" id="complianceBatchLimit" placeholder="统一值"></span>
+            <span class="source-batch-item">days <input type="number" min="1" max="365" id="complianceBatchDays" placeholder="统一值"></span>
+            <span class="source-batch-item">开始 <input type="date" id="complianceBatchStartDate" onchange="syncBatchDaysFromDateRange('compliance')"></span>
+            <span class="source-batch-item">结束 <input type="date" id="complianceBatchEndDate" onchange="syncBatchDaysFromDateRange('compliance')"></span>
+            <button type="button" id="complianceBatchApplyBtn" class="source-batch-apply" onclick="applyBatchSourceValues('compliance')">应用到全部合规源</button>
+          </div>
+          <div class="source-batch-range-hint info" id="complianceBatchRangeHint">选择起止日期后将自动计算 days，也可直接填写 days。</div>
+        </div>
+        <div id="settingsComplianceSources"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const PAGE_SIZE = 24;
+let allNewsSources = [];
+let allComplianceSources = [];
+let currentNews = [];
+let currentDigest = [];
+let currentComplianceDigest = [];
+let currentCommunityPulse = null;
+let currentPage = 1;
+let currentMode = 'latest';
+let currentGroupFilter = 'all';
+let currentSourceFilter = 'all';
+let promptDefaults = {};
+let persistedPromptValues = {};
+let loadedConfigSnapshot = null;
+let loadedNewsSourceSnapshot = {};
+let loadedComplianceSourceSnapshot = {};
+let promptStatusLoaded = false;
+let configLoadPromise = Promise.resolve();
+let newsSourceSaveQueue = Promise.resolve();
+let complianceSourceSaveQueue = Promise.resolve();
+let isAutostartEnabled = false;
+let backgroundService = { running: false, pid: null, autostartEnabled: false };
+let searchQuery = '';
+let newsShowAll = false;
+let complianceShowAll = false;
+let historyItems = [];
+let historyTotal = 0;
+let historyTotalPages = 1;
+let historyFavoritesOnly = false;
+
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+async function api(url, opts = {}) {
+  try {
+    const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    if (!r.ok && r.headers.get('content-type')?.includes('json')) {
+      const err = await r.json();
+      return { ok: false, error: err.error || `HTTP ${r.status}` };
+    }
+    if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function safeColor(c) {
+  return /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : '#2563eb';
+}
+
+function safeHref(url) {
+  if (!url) return '#';
+  try { const u = new URL(url); if (u.protocol === 'http:' || u.protocol === 'https:') return esc(url); } catch {}
+  return '#';
+}
+
+function buildNewsSourceSnapshot() {
+  const snapshot = {};
+  allNewsSources.forEach(s => {
+    snapshot[s.name] = { enabled: s.enabled, limit: s.limit ?? 30, recentDays: s.recentDays || 3 };
+  });
+  return snapshot;
+}
+
+function buildComplianceSourceSnapshot() {
+  const snapshot = {};
+  allComplianceSources.forEach(s => {
+    snapshot[s.key] = { enabled: s.enabled, limit: s.limit ?? 20, recentDays: s.recentDays || 3 };
+  });
+  return snapshot;
+}
+
+const SOURCE_BATCH_GROUP_CONFIG = {
+  news: {
+    label: '新闻订阅源',
+    limitInputId: 'newsBatchLimit',
+    daysInputId: 'newsBatchDays',
+    startInputId: 'newsBatchStartDate',
+    endInputId: 'newsBatchEndDate',
+    hintId: 'newsBatchRangeHint',
+    applyButtonId: 'newsBatchApplyBtn',
+    targetLimitSelector: '.news-limit-input',
+    targetDaysSelector: '.news-days-input',
+    limitMin: 0,
+    limitMax: 200,
+    daysMin: 1,
+    daysMax: 365,
+    defaultLimit: 30,
+    defaultDays: 3,
+  },
+  compliance: {
+    label: '合规订阅源',
+    limitInputId: 'complianceBatchLimit',
+    daysInputId: 'complianceBatchDays',
+    startInputId: 'complianceBatchStartDate',
+    endInputId: 'complianceBatchEndDate',
+    hintId: 'complianceBatchRangeHint',
+    applyButtonId: 'complianceBatchApplyBtn',
+    targetLimitSelector: '.compliance-limit-input',
+    targetDaysSelector: '.compliance-days-input',
+    limitMin: 0,
+    limitMax: 100,
+    daysMin: 1,
+    daysMax: 365,
+    defaultLimit: 20,
+    defaultDays: 3,
+  },
+};
+
+function getSourceBatchConfig(group) {
+  return SOURCE_BATCH_GROUP_CONFIG[group];
+}
+
+function setBatchRangeHint(group, message, level = 'info') {
+  const cfg = getSourceBatchConfig(group);
+  if (!cfg) return;
+  const hintEl = document.getElementById(cfg.hintId);
+  if (!hintEl) return;
+  hintEl.className = `source-batch-range-hint ${level}`;
+  hintEl.textContent = message;
+}
+
+function parseDateInputValue(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const ts = Date.UTC(year, month - 1, day);
+  const dt = new Date(ts);
+  if (
+    dt.getUTCFullYear() !== year
+    || dt.getUTCMonth() !== month - 1
+    || dt.getUTCDate() !== day
+  ) return null;
+  return { ts };
+}
+
+function calculateRangeDays(startValue, endValue) {
+  const start = parseDateInputValue(startValue);
+  const end = parseDateInputValue(endValue);
+  if (!start || !end) {
+    return { ok: false, error: '请填写有效的开始和结束日期' };
+  }
+  if (end.ts < start.ts) {
+    return { ok: false, error: '结束日期不能早于开始日期' };
+  }
+  const days = Math.floor((end.ts - start.ts) / 86400000) + 1;
+  return { ok: true, days };
+}
+
+function getUniformValue(values) {
+  if (!values.length) return null;
+  const first = values[0];
+  return values.every(v => v === first) ? first : null;
+}
+
+function initializeBatchInputs(group, sources = []) {
+  const cfg = getSourceBatchConfig(group);
+  if (!cfg) return;
+  const limitInput = document.getElementById(cfg.limitInputId);
+  const daysInput = document.getElementById(cfg.daysInputId);
+  const startInput = document.getElementById(cfg.startInputId);
+  const endInput = document.getElementById(cfg.endInputId);
+  const applyButton = document.getElementById(cfg.applyButtonId);
+  if (!limitInput || !daysInput || !startInput || !endInput || !applyButton) return;
+
+  const hasSources = Array.isArray(sources) && sources.length > 0;
+  limitInput.disabled = !hasSources;
+  daysInput.disabled = !hasSources;
+  startInput.disabled = !hasSources;
+  endInput.disabled = !hasSources;
+  applyButton.disabled = !hasSources;
+  if (!hasSources) {
+    limitInput.value = '';
+    daysInput.value = '';
+    startInput.value = '';
+    endInput.value = '';
+    setBatchRangeHint(group, `当前没有可设置的${cfg.label}`, 'info');
+    return;
+  }
+
+  const limitValues = sources.map(s => Number.isFinite(Number(s.limit)) ? Number(s.limit) : cfg.defaultLimit);
+  const dayValues = sources.map(s => Number.isFinite(Number(s.recentDays)) ? Number(s.recentDays) : cfg.defaultDays);
+  const uniformLimit = getUniformValue(limitValues);
+  const uniformDays = getUniformValue(dayValues);
+  limitInput.value = uniformLimit === null ? '' : String(uniformLimit);
+  daysInput.value = uniformDays === null ? '' : String(uniformDays);
+  startInput.value = '';
+  endInput.value = '';
+  setBatchRangeHint(group, '选择起止日期后将自动计算 days，也可直接填写 days。', 'info');
+}
+
+function syncBatchDaysFromDateRange(group) {
+  const cfg = getSourceBatchConfig(group);
+  if (!cfg) return;
+  const startInput = document.getElementById(cfg.startInputId);
+  const endInput = document.getElementById(cfg.endInputId);
+  const daysInput = document.getElementById(cfg.daysInputId);
+  if (!startInput || !endInput || !daysInput) return;
+
+  if (!startInput.value || !endInput.value) {
+    setBatchRangeHint(group, '选择起止日期后将自动计算 days，也可直接填写 days。', 'info');
+    return;
+  }
+
+  const calcResult = calculateRangeDays(startInput.value, endInput.value);
+  if (!calcResult.ok) {
+    setBatchRangeHint(group, calcResult.error, 'error');
+    return;
+  }
+  daysInput.value = String(calcResult.days);
+  setBatchRangeHint(group, `已根据日期范围计算为 ${calcResult.days} 天`, 'success');
+}
+
+function normalizeBatchNumber(raw, min, max, fieldName) {
+  if (raw === '' || raw === null || raw === undefined) return { provided: false };
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return { provided: true, ok: false, error: `${fieldName} 请输入有效数字` };
+  }
+  const normalized = Math.min(max, Math.max(min, Math.round(parsed)));
+  return { provided: true, ok: true, value: normalized };
+}
+
+function applyBatchSourceValues(group) {
+  const cfg = getSourceBatchConfig(group);
+  if (!cfg) return;
+  const limitInput = document.getElementById(cfg.limitInputId);
+  const daysInput = document.getElementById(cfg.daysInputId);
+  if (!limitInput || !daysInput) return;
+
+  const limitResult = normalizeBatchNumber(limitInput.value.trim(), cfg.limitMin, cfg.limitMax, 'limit');
+  const daysResult = normalizeBatchNumber(daysInput.value.trim(), cfg.daysMin, cfg.daysMax, 'days');
+  if (!limitResult.provided && !daysResult.provided) {
+    toast('请至少填写 limit 或 days 后再应用', 'error');
+    return;
+  }
+  if (limitResult.provided && !limitResult.ok) {
+    toast(limitResult.error, 'error');
+    return;
+  }
+  if (daysResult.provided && !daysResult.ok) {
+    toast(daysResult.error, 'error');
+    return;
+  }
+
+  if (limitResult.ok) limitInput.value = String(limitResult.value);
+  if (daysResult.ok) daysInput.value = String(daysResult.value);
+
+  const limitTargets = document.querySelectorAll(cfg.targetLimitSelector);
+  const daysTargets = document.querySelectorAll(cfg.targetDaysSelector);
+  if (!limitTargets.length || !daysTargets.length) {
+    toast(`当前没有可设置的${cfg.label}`, 'error');
+    return;
+  }
+
+  if (limitResult.ok) {
+    limitTargets.forEach(input => { input.value = String(limitResult.value); });
+  }
+  if (daysResult.ok) {
+    daysTargets.forEach(input => { input.value = String(daysResult.value); });
+  }
+
+  const updates = [];
+  if (limitResult.ok) updates.push(`limit=${limitResult.value}`);
+  if (daysResult.ok) updates.push(`days=${daysResult.value}`);
+  toast(`${cfg.label}已批量应用：${updates.join('，')}`, 'success');
+}
+
+function decodeHtmlEntities(s) {
+  return String(s || '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&#(\\d+);/g, (_, code) => {
+      const value = Number(code);
+      return Number.isFinite(value) ? String.fromCodePoint(value) : '';
+    })
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => {
+      const value = Number.parseInt(code, 16);
+      return Number.isFinite(value) ? String.fromCodePoint(value) : '';
+    });
+}
+
+function toPlainText(s) {
+  let value = String(s || '');
+  for (let i = 0; i < 3; i++) {
+    const prev = value;
+    value = decodeHtmlEntities(value);
+    value = value.replace(/<[^>]*>/g, ' ');
+    value = value.replace(/\\s+/g, ' ').trim();
+    if (value === prev) break;
+  }
+  return value;
+}
+
+function renderRelatedItemsHtml(items = []) {
+  if (!Array.isArray(items) || items.length === 0) return '';
+  return `<div class="digest-related">
+    <div class="digest-related-label">相关原文 (${items.length})</div>
+    <ul class="digest-related-list">
+      ${items.map((item) => {
+        const href = safeHref(item.link);
+        const meta = [item.source, item.region].filter(Boolean).join(' · ');
+        const titleHtml = href !== '#'
+          ? `<a href="${href}" target="_blank">${esc(item.title || '无标题')}</a>`
+          : `<strong>${esc(item.title || '无标题')}</strong>`;
+        return `<li class="digest-related-item">${titleHtml}${meta ? `<span class="digest-related-meta">${esc(meta)}</span>` : ''}</li>`;
+      }).join('')}
+    </ul>
+  </div>`;
+}
+
+// ========== Search ==========
+function handleSearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  document.getElementById('searchClear').classList.toggle('visible', searchQuery.length > 0);
+  currentPage = 1;
+  if (currentMode === 'history') {
+    loadHistory(1);
+    return;
+  }
+  renderGroupTabs();
+  renderSourceTabs();
+  renderNewsPage();
+}
+
+function clearSearch() {
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  currentPage = 1;
+  if (currentMode === 'history') {
+    loadHistory(1);
+    return;
+  }
+  renderGroupTabs();
+  renderSourceTabs();
+  renderNewsPage();
+}
+
+function updateModeButtons() {
+  document.getElementById('btnViewLatest').classList.toggle('active', currentMode === 'latest');
+  document.getElementById('btnViewHistory').classList.toggle('active', currentMode === 'history');
+}
+
+function showLatestView() {
+  currentMode = 'latest';
+  updateModeButtons();
+  renderAll();
+}
+
+async function showHistoryView() {
+  currentMode = 'history';
+  historyFavoritesOnly = false;
+  currentPage = 1;
+  updateModeButtons();
+  await loadHistory(1);
+}
+
+async function loadHistory(page = 1) {
+  const q = encodeURIComponent(searchQuery || '');
+  const url = `/api/history?page=${page}&pageSize=${PAGE_SIZE}&q=${q}&favoritesOnly=${historyFavoritesOnly}`;
+  const d = await api(url);
+  if (!d.ok) {
+    toast(`历史加载失败：${d.error}`, 'error');
+    return;
+  }
+  historyItems = d.items || [];
+  historyTotal = d.total || 0;
+  historyTotalPages = d.totalPages || 1;
+  currentPage = d.page || 1;
+  renderAll();
+}
+
+function toggleHistoryFavoritesOnly() {
+  if (currentMode !== 'history') return;
+  historyFavoritesOnly = !historyFavoritesOnly;
+  loadHistory(1);
+}
+
+// ========== Status Drawer ==========
+function toggleStatusDrawer() {
+  const pill = document.getElementById('statusPill');
+  const drawer = document.getElementById('statusDrawer');
+  const isOpen = drawer.classList.toggle('open');
+  pill.classList.toggle('expanded', isOpen);
+}
+
+document.addEventListener('click', (e) => {
+  const drawer = document.getElementById('statusDrawer');
+  const pill = document.getElementById('statusPill');
+  if (drawer && !drawer.contains(e.target) && !pill.contains(e.target)) {
+    drawer.classList.remove('open');
+    pill.classList.remove('expanded');
+  }
+});
+
+async function init() {
+  configLoadPromise = loadConfig();
+  await Promise.all([loadNewsSources(), loadComplianceSources(), configLoadPromise, loadStatus(), loadAutostartStatus(), refreshServiceLogs()]);
+  loadedNewsSourceSnapshot = buildNewsSourceSnapshot();
+  loadedComplianceSourceSnapshot = buildComplianceSourceSnapshot();
+  renderSourceSettings();
+  updateModeButtons();
+}
+
+// ========== Sidebar Groups ==========
+function toggleSidebarGroup(group) {
+  const el = document.getElementById(group === 'news' ? 'sidebarNewsGroup' : 'sidebarComplianceGroup');
+  el.classList.toggle('collapsed');
+}
+
+// ========== News Sources ==========
+async function loadNewsSources() {
+  const d = await api('/api/sources');
+  if (!d.ok) {
+    document.getElementById('newsSourceList').innerHTML = '<div class="source-item" style="justify-content:center;color:var(--accent-rose);font-size:0.82rem;">加载失败</div>';
+    document.getElementById('mcpDot').className = 'status-dot offline';
+    document.getElementById('mcpStatus').textContent = '离线';
+    updateStatusSummary();
+    return;
+  }
+  document.getElementById('mcpDot').className = 'status-dot online';
+  document.getElementById('mcpStatus').textContent = '在线';
+  updateStatusSummary();
+  allNewsSources = d.sources;
+  renderNewsSources();
+}
+
+function renderNewsSources() {
+  const el = document.getElementById('newsSourceList');
+  const enabledCount = allNewsSources.filter(s => s.enabled).length;
+  document.getElementById('newsSourceCount').textContent = enabledCount;
+  document.getElementById('toggleAllNews').className = `toggle ${enabledCount === allNewsSources.length && allNewsSources.length > 0 ? 'active' : ''}`;
+
+  const enabled = allNewsSources.filter(s => s.enabled);
+  const disabled = allNewsSources.filter(s => !s.enabled);
+  const showAll = newsShowAll || disabled.length === 0;
+  const visibleSources = showAll ? [...enabled, ...disabled] : enabled;
+
+  let html = visibleSources.map(s => {
+    const label = s.name.replace('get_', '').replace(/_/g, ' ');
+    return `<div class="source-item ${s.enabled ? '' : 'disabled-source'}" title="${esc(s.description || '')}">
+      <span class="name">${label}</span>
+      <span class="region-tag" style="background:var(--accent-blue-light);color:var(--accent-blue);">${s.recentDays || 3}d</span>
+      <div class="toggle ${s.enabled ? 'active' : ''}" data-toggle-news="${esc(s.name)}"></div>
+    </div>`;
+  }).join('');
+
+  if (!showAll && disabled.length > 0) {
+    html += `<button class="sidebar-expand-btn" onclick="newsShowAll=true;renderNewsSources()">显示全部 ${allNewsSources.length} 个源 ▾</button>`;
+  } else if (newsShowAll && disabled.length > 0) {
+    html += `<button class="sidebar-expand-btn" onclick="newsShowAll=false;renderNewsSources()">仅显示已启用 ▴</button>`;
+  }
+
+  el.innerHTML = html;
+  el.querySelectorAll('[data-toggle-news]').forEach(t => {
+    t.addEventListener('click', () => toggleNewsSource(t.dataset.toggleNews));
+  });
+}
+
+function toggleNewsSource(name) {
+  const s = allNewsSources.find(x => x.name === name);
+  if (s) { s.enabled = !s.enabled; renderNewsSources(); saveSourceConfig(); }
+}
+
+function toggleAllNewsSources() {
+  const allOn = allNewsSources.every(s => s.enabled);
+  allNewsSources.forEach(s => s.enabled = !allOn);
+  renderNewsSources();
+  saveSourceConfig();
+}
+
+// ========== Compliance Sources ==========
+async function loadComplianceSources() {
+  const d = await api('/api/compliance-sources');
+  if (!d.ok) {
+    document.getElementById('complianceSourceList').innerHTML = '<div class="source-item" style="justify-content:center;color:var(--text-tertiary);font-size:0.82rem;">加载失败</div>';
+    return;
+  }
+  allComplianceSources = d.sources;
+  renderComplianceSources();
+}
+
+function renderComplianceSources() {
+  const el = document.getElementById('complianceSourceList');
+  const enabledCount = allComplianceSources.filter(s => s.enabled).length;
+  document.getElementById('complianceSourceCount').textContent = enabledCount;
+  document.getElementById('toggleAllCompliance').className = `toggle ${enabledCount === allComplianceSources.length && allComplianceSources.length > 0 ? 'active' : ''}`;
+
+  const enabled = allComplianceSources.filter(s => s.enabled);
+  const disabled = allComplianceSources.filter(s => !s.enabled);
+  const showAll = complianceShowAll || disabled.length === 0;
+  const visibleSources = showAll ? [...enabled, ...disabled] : enabled;
+
+  let html = visibleSources.map(s => {
+    const label = s.name;
+    return `<div class="source-item ${s.enabled ? '' : 'disabled-source'}" title="${esc(s.url || '')}">
+      <span class="region-tag">${s.region}</span>
+      <span class="name">${esc(label)}</span>
+      <span class="region-tag" style="background:var(--accent-blue-light);color:var(--accent-blue);">${s.recentDays || 3}d</span>
+      <div class="toggle ${s.enabled ? 'active' : ''}" data-toggle-compliance="${esc(s.key)}"></div>
+    </div>`;
+  }).join('');
+
+  if (!showAll && disabled.length > 0) {
+    html += `<button class="sidebar-expand-btn" onclick="complianceShowAll=true;renderComplianceSources()">显示全部 ${allComplianceSources.length} 个源 ▾</button>`;
+  } else if (complianceShowAll && disabled.length > 0) {
+    html += `<button class="sidebar-expand-btn" onclick="complianceShowAll=false;renderComplianceSources()">仅显示已启用 ▴</button>`;
+  }
+
+  el.innerHTML = html;
+  el.querySelectorAll('[data-toggle-compliance]').forEach(t => {
+    t.addEventListener('click', () => toggleComplianceSource(t.dataset.toggleCompliance));
+  });
+}
+
+function toggleComplianceSource(key) {
+  const s = allComplianceSources.find(x => x.key === key);
+  if (s) { s.enabled = !s.enabled; renderComplianceSources(); saveComplianceConfig(); }
+}
+
+function toggleAllComplianceSources() {
+  const allOn = allComplianceSources.every(s => s.enabled);
+  allComplianceSources.forEach(s => s.enabled = !allOn);
+  renderComplianceSources();
+  saveComplianceConfig();
+}
+
+async function saveSourceConfig() {
+  const snapshot = buildNewsSourceSnapshot();
+  newsSourceSaveQueue = newsSourceSaveQueue.then(async () => {
+    const d = await api('/api/config', { method: 'POST', body: JSON.stringify({ sources: snapshot }) });
+    if (!d.ok) {
+      toast(`保存新闻源配置失败：${d.error}`, 'error');
+      await loadNewsSources();
+      renderSourceSettings();
+      return;
+    }
+    loadedNewsSourceSnapshot = JSON.parse(JSON.stringify(snapshot));
+    currentNews = currentNews.filter(item => item._group === 'compliance');
+    currentDigest = [];
+    currentPage = 1;
+    currentMode = 'latest';
+    updateModeButtons();
+    renderAll();
+  }).catch(async (err) => {
+    toast(`保存新闻源配置失败：${err.message}`, 'error');
+    await loadNewsSources();
+    renderSourceSettings();
+  });
+  return newsSourceSaveQueue;
+}
+
+async function saveComplianceConfig() {
+  const snapshot = buildComplianceSourceSnapshot();
+  complianceSourceSaveQueue = complianceSourceSaveQueue.then(async () => {
+    const d = await api('/api/config', { method: 'POST', body: JSON.stringify({ complianceSources: snapshot }) });
+    if (!d.ok) {
+      toast(`保存合规源配置失败：${d.error}`, 'error');
+      await loadComplianceSources();
+      renderSourceSettings();
+      return;
+    }
+    loadedComplianceSourceSnapshot = JSON.parse(JSON.stringify(snapshot));
+    currentNews = currentNews.filter(item => item._group !== 'compliance');
+    currentComplianceDigest = [];
+    currentCommunityPulse = null;
+    currentPage = 1;
+    currentMode = 'latest';
+    updateModeButtons();
+    renderAll();
+  }).catch(async (err) => {
+    toast(`保存合规源配置失败：${err.message}`, 'error');
+    await loadComplianceSources();
+    renderSourceSettings();
+  });
+  return complianceSourceSaveQueue;
+}
+
+// ========== MCP Controls ==========
+async function mcpAction(action) {
+  const d = await api(`/api/mcp/${action}`, { method: 'POST', body: '{}' });
+  if (d.ok) {
+    toast(d.message, 'success');
+    loadStatus();
+    if (action === 'start' || action === 'restart') loadNewsSources();
+  } else {
+    toast(d.error, 'error');
+  }
+}
+
+// ========== Fetch ==========
+function summarizeFetchDiagnostics(diagnostics = {}, errors = []) {
+  const messages = [];
+  if (Array.isArray(errors) && errors.length > 0) {
+    const topErrors = errors
+      .slice(0, 2)
+      .map(err => typeof err === 'string' ? err : `${err.source || 'unknown'}: ${err.error || err.message || 'error'}`);
+    messages.push(`抓取警告 ${errors.length} 项：${topErrors.join('；')}`);
+  }
+  const complianceSources = diagnostics?.compliance?.sources || [];
+  const fallbackSources = complianceSources.filter(source => source && source.fallbackUsed);
+  const droppedSources = complianceSources.filter(source => source && ((source.missingDate || 0) > 0 || (source.outsideRecentDays || 0) > 0));
+  const failedSources = complianceSources
+    .filter(source => source && (source.primaryError || source.fallbackError))
+    .slice(0, 2)
+    .map(source => `${source.name || source.source}: ${source.fallbackError || source.primaryError}`);
+  if (fallbackSources.length > 0) {
+    messages.push(`fallback ${fallbackSources.length} 个源`);
+  }
+  if (failedSources.length > 0) {
+    messages.push(failedSources.join('；'));
+  }
+  if (droppedSources.length > 0) {
+    const important = droppedSources
+      .slice(0, 3)
+      .map(source => `${source.name || source.source} 缺日期 ${source.missingDate || 0} / 超窗 ${source.outsideRecentDays || 0}`);
+    messages.push(important.join("；"));
+  }
+  return messages.filter(Boolean).join(" · ");
+}
+
+async function fetchNews() {
+  currentMode = 'latest';
+  updateModeButtons();
+  const btn = document.getElementById('btnFetch');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 抓取中...';
+
+  const enabled = allNewsSources.filter(s => s.enabled).map(s => s.name);
+  if (enabled.length === 0 && allComplianceSources.filter(s => s.enabled).length === 0) {
+    toast('请至少启用一个数据源', 'error'); btn.disabled = false; btn.innerHTML = '抓取新闻'; return;
+  }
+
+  const d = await api('/api/fetch', { method: 'POST', body: JSON.stringify({ sources: enabled }) });
+  btn.disabled = false; btn.innerHTML = '抓取新闻';
+
+  if (!d.ok) { toast(`抓取失败：${d.error}`, 'error'); return; }
+
+  currentNews = d.items || [];
+  currentDigest = [];
+  currentComplianceDigest = [];
+  currentCommunityPulse = null;
+  currentPage = 1;
+  currentGroupFilter = 'all';
+  currentSourceFilter = 'all';
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  renderAll();
+  document.getElementById('lastFetch').textContent = new Date().toLocaleTimeString('zh-CN');
+  updateActionButtons();
+  toast(`成功抓取 ${d.newsCount || 0} 条新闻 + ${d.complianceCount || 0} 条合规资讯`, 'success');
+  const diagSummary = summarizeFetchDiagnostics(d.diagnostics, d.errors);
+  if (diagSummary) {
+    toast(diagSummary, 'info');
+  }
+}
+
+// ========== Render ==========
+function updateActionButtons() {
+  const hasVisibleItems = currentNews.length > 0;
+  const hasNewsItems = currentNews.some(item => item._group !== 'compliance');
+  const hasComplianceItems = currentNews.some(item => item._group === 'compliance');
+  const hasEnabledNewsSources = allNewsSources.some(source => source.enabled);
+  const hasEnabledComplianceSources = allComplianceSources.some(source => source.enabled);
+  const canGenerateNewsDigest = hasEnabledNewsSources && hasNewsItems;
+  const canGenerateComplianceDigest = hasEnabledComplianceSources && hasComplianceItems;
+  document.getElementById('btnDigest').disabled = !(canGenerateNewsDigest || canGenerateComplianceDigest);
+  document.getElementById('btnExport').disabled = !hasVisibleItems;
+  document.getElementById('btnSendEmail').disabled = !(canGenerateNewsDigest || canGenerateComplianceDigest);
+  const webhookBtn = document.getElementById('btnSendWebhook');
+  if (webhookBtn) webhookBtn.disabled = !canGenerateComplianceDigest;
+}
+
+function renderAll() {
+  if (currentMode === 'history') {
+    document.getElementById('newsCount').textContent = `${historyTotal} 条`;
+    document.getElementById('digestPanel').style.display = 'none';
+    document.getElementById('groupTabs').style.display = 'none';
+    document.getElementById('viewTabs').style.display = 'none';
+    const webhookBtn = document.getElementById('btnSendWebhook');
+    if (webhookBtn) webhookBtn.disabled = true;
+    renderNewsPage();
+    return;
+  }
+  document.getElementById('newsCount').textContent = `${currentNews.length} 条`;
+  updateActionButtons();
+  renderDigest();
+  renderGroupTabs();
+  renderSourceTabs();
+  renderNewsPage();
+}
+
+// ========== Digest ==========
+async function generateDigest() {
+  const btn = document.getElementById('btnDigest');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 准备中...';
+
+  try {
+    const es = new EventSource('/api/digest/stream?type=all');
+    await new Promise((resolve, reject) => {
+      es.addEventListener('progress', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          btn.innerHTML = `<span class="spinner"></span> ${d.data || '分析中...'}`;
+        } catch {}
+      });
+      es.addEventListener('news_result', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.ok) { currentDigest = d.items || []; renderDigest(); }
+        } catch {}
+      });
+      es.addEventListener('compliance_result', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.ok) { currentComplianceDigest = d.items || []; renderDigest(); }
+        } catch {}
+      });
+      es.addEventListener('community_pulse_result', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.ok) { currentCommunityPulse = d.data || null; renderDigest(); }
+        } catch {}
+      });
+      es.addEventListener('result', (e) => {
+        try {
+          const d = JSON.parse(e.data);
+          if (d.ok) {
+            if (d.news) currentDigest = d.news.items || [];
+            if (d.compliance) currentComplianceDigest = d.compliance.items || [];
+            if (d.communityPulse) currentCommunityPulse = d.communityPulse;
+            renderDigest();
+          }
+        } catch {}
+        es.close();
+        const total = currentDigest.length + currentComplianceDigest.length;
+        toast(`已生成 ${total} 条摘要（新闻 ${currentDigest.length} + 合规 ${currentComplianceDigest.length}）`, 'success');
+        resolve();
+      });
+      es.addEventListener('error', (e) => {
+        try { if (e.data) { const d = JSON.parse(e.data); toast(`生成失败：${d.error}`, 'error'); } } catch {}
+        es.close();
+        reject(new Error('stream error'));
+      });
+      es.onerror = () => { es.close(); reject(new Error('SSE connection failed')); };
+    });
+  } catch (err) {
+    if (err.message !== 'stream error') {
+      const d = await api('/api/digest', { method: 'POST', body: '{}' });
+      if (d.ok) {
+        if (d.news) currentDigest = d.news.items || [];
+        if (d.compliance) currentComplianceDigest = d.compliance.items || [];
+        currentCommunityPulse = d.communityPulse ?? null;
+        renderDigest();
+        toast('摘要生成完成', 'success');
+      } else {
+        toast(`生成失败：${d.error}`, 'error');
+      }
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'AI Top10';
+  }
+}
+
+function renderDigest() {
+  const panel = document.getElementById('digestPanel');
+  const hasNews = currentDigest.length > 0;
+  const hasComp = currentComplianceDigest.length > 0;
+  const hasPulse = currentCommunityPulse && (currentCommunityPulse.conclusion || (currentCommunityPulse.findings || []).length > 0);
+  if (!hasNews && !hasComp && !hasPulse) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const newsSection = document.getElementById('newsDigestSection');
+  const compSection = document.getElementById('complianceDigestSection');
+  const divider = document.getElementById('digestDivider');
+  const pulseSection = document.getElementById('communityPulseSection');
+
+  if (hasNews) {
+    newsSection.style.display = 'block';
+    document.getElementById('newsDigestList').innerHTML = currentDigest.map((item, i) => {
+      const rankClass = i < 3 ? 'top3' : (i < 6 ? 'top6' : 'rest');
+      return `<div class="digest-item">
+        <span class="digest-rank ${rankClass}">${i + 1}</span>
+        <div class="digest-body">
+          <div class="digest-title"><strong>${esc(item.title)}</strong></div>
+          <div class="digest-summary">${esc(item.summary)}</div>
+          ${item.sources ? `<div class="digest-sources">来源: ${esc(item.sources)}</div>` : ''}
+          ${renderRelatedItemsHtml(item.relatedItems)}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    newsSection.style.display = 'none';
+  }
+
+  if (divider) divider.style.display = (hasNews && (hasComp || hasPulse)) ? 'block' : 'none';
+
+  if (hasComp || hasPulse) {
+    compSection.style.display = 'block';
+  } else {
+    compSection.style.display = 'none';
+  }
+
+  if (hasComp) {
+    document.getElementById('complianceDigestList').innerHTML = currentComplianceDigest.map((item, i) => {
+      const rankClass = i < 3 ? 'top3' : (i < 6 ? 'top6' : 'rest');
+      return `<div class="digest-item">
+        <span class="digest-rank ${rankClass}">${i + 1}</span>
+        <div class="digest-body">
+          <div class="digest-title">
+            <strong>${esc(item.title)}</strong>
+          </div>
+          <div class="digest-summary">${esc(item.summary)}</div>
+          <div class="digest-sources">
+            ${item.region ? `地区: ${esc(item.region)}` : ''}
+            ${item.sources ? ` | 来源: ${esc(item.sources)}` : ''}
+          </div>
+          ${renderRelatedItemsHtml(item.relatedItems)}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('complianceDigestList').innerHTML = '';
+  }
+
+  if (hasPulse) {
+    pulseSection.style.display = 'block';
+    const pulse = currentCommunityPulse || {};
+    const findings = Array.isArray(pulse.findings) ? pulse.findings : [];
+    let html = `<div class="digest-item"><div class="digest-body">
+      <div class="digest-summary">${esc(pulse.conclusion || '近期未发现针对 Bambu Lab 隐私或安全的社区讨论。')}</div>`;
+    if (findings.length > 0) {
+      html += `<div class="digest-related"><div class="digest-related-label">重点讨论来源 (${findings.length})</div><ul class="digest-related-list">`;
+      html += findings.map((it) => {
+        const href = safeHref(it.link);
+        const topic = esc(it.topic || '社区讨论');
+        const src = esc(it.source || 'Unknown');
+        const details = esc(it.details || '');
+        const titleHtml = href !== '#'
+          ? `<a href="${href}" target="_blank">${topic}</a>`
+          : `<strong>${topic}</strong>`;
+        return `<li class="digest-related-item">${titleHtml}<span class="digest-related-meta">${src}${details ? ` · ${details}` : ''}</span></li>`;
+      }).join('');
+      html += "</ul></div>";
+    }
+    html += "</div></div>";
+    document.getElementById('communityPulseContent').innerHTML = html;
+  } else {
+    pulseSection.style.display = 'none';
+    document.getElementById('communityPulseContent').innerHTML = '';
+  }
+}
+
+// ========== Group Tabs ==========
+function renderGroupTabs() {
+  const el = document.getElementById('groupTabs');
+  if (currentMode === 'history') { el.style.display = 'none'; return; }
+  if (currentNews.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const allItems = applySearchFilter(currentNews);
+  const newsCount = allItems.filter(n => n._group !== 'compliance').length;
+  const complianceCount = allItems.filter(n => n._group === 'compliance').length;
+  el.innerHTML = `
+    <button class="group-tab g-all ${currentGroupFilter === 'all' ? 'active' : ''}" onclick="setGroupFilter('all')">全部<span class="tab-count">${allItems.length}</span></button>
+    <button class="group-tab g-news ${currentGroupFilter === 'news' ? 'active' : ''}" onclick="setGroupFilter('news')">新闻<span class="tab-count">${newsCount}</span></button>
+    <button class="group-tab g-compliance ${currentGroupFilter === 'compliance' ? 'active' : ''}" onclick="setGroupFilter('compliance')">合规<span class="tab-count">${complianceCount}</span></button>
+  `;
+}
+
+function setGroupFilter(g) {
+  currentGroupFilter = g;
+  currentSourceFilter = 'all';
+  currentPage = 1;
+  renderGroupTabs();
+  renderSourceTabs();
+  renderNewsPage();
+}
+
+// ========== Source Tabs ==========
+function renderSourceTabs() {
+  const el = document.getElementById('viewTabs');
+  if (currentMode === 'history') { el.style.display = 'none'; return; }
+  const filtered = getGroupFiltered();
+  if (filtered.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+
+  const sourceCounts = {};
+  filtered.forEach(n => {
+    const s = n._source || 'unknown';
+    sourceCounts[s] = (sourceCounts[s] || 0) + 1;
+  });
+
+  let html = `<button class="view-tab ${currentSourceFilter === 'all' ? 'active' : ''}" data-source-filter="all">全部<span class="tab-badge">${filtered.length}</span></button>`;
+  for (const [src, count] of Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])) {
+    const isCompliance = src.startsWith('compliance_');
+    const label = isCompliance
+      ? src.replace('compliance_', '').replace(/_/g, ' ')
+      : src.replace('get_', '').replace(/_/g, ' ');
+    html += `<button class="view-tab ${isCompliance ? 'compliance' : ''} ${currentSourceFilter === src ? 'active' : ''}" data-source-filter="${esc(src)}">${label}<span class="tab-badge">${count}</span></button>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('[data-source-filter]').forEach(btn => {
+    btn.addEventListener('click', () => setSourceFilter(btn.dataset.sourceFilter));
+  });
+}
+
+function setSourceFilter(f) {
+  currentSourceFilter = f;
+  currentPage = 1;
+  renderSourceTabs();
+  renderNewsPage();
+}
+
+// ========== Filtered News ==========
+function applySearchFilter(items) {
+  if (!searchQuery) return items;
+  return items.filter(n => {
+    const title = (n.title || '').toLowerCase();
+    const desc = toPlainText(n.summary || n.description || '').toLowerCase();
+    return title.includes(searchQuery) || desc.includes(searchQuery);
+  });
+}
+
+function getGroupFiltered() {
+  let items = currentNews;
+  if (currentGroupFilter === 'compliance') items = items.filter(n => n._group === 'compliance');
+  else if (currentGroupFilter !== 'all') items = items.filter(n => n._group !== 'compliance');
+  return applySearchFilter(items);
+}
+
+function getFilteredNews() {
+  let items = getGroupFiltered();
+  if (currentSourceFilter !== 'all') items = items.filter(n => n._source === currentSourceFilter);
+  return items;
+}
+
+// ========== Paginated News ==========
+function renderNewsPage() {
+  const container = document.getElementById('newsContainer');
+  const pagEl = document.getElementById('pagination');
+
+  if (currentMode === 'history') {
+    const favLabel = historyFavoritesOnly ? '仅看收藏' : '全部历史';
+    if (historyItems.length === 0) {
+      container.innerHTML = `<div class="news-empty"><div class="icon">&#128214;</div><p>暂无历史新闻（${favLabel}）</p></div>`;
+      pagEl.style.display = 'none';
+      return;
+    }
+    container.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn btn-ghost btn-sm ${historyFavoritesOnly ? 'active' : ''}" onclick="toggleHistoryFavoritesOnly()">${historyFavoritesOnly ? '显示全部' : '仅看收藏'}</button>
+    </div><div class="news-grid">${historyItems.map(renderHistoryCard).join('')}</div>`;
+    if (historyTotalPages > 1) {
+      pagEl.style.display = 'flex';
+      let ph = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>&lt;</button>`;
+      ph += `<span class="page-info">${(currentPage - 1) * PAGE_SIZE + 1}-${Math.min(currentPage * PAGE_SIZE, historyTotal)} / ${historyTotal}</span>`;
+      ph += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage >= historyTotalPages ? 'disabled' : ''}>&gt;</button>`;
+      pagEl.innerHTML = ph;
+    } else {
+      pagEl.style.display = 'none';
+    }
+    return;
+  }
+
+  if (currentNews.length === 0) {
+    container.innerHTML = '<div class="news-empty"><div class="icon">&#128225;</div><p>点击「抓取新闻」开始获取资讯</p></div>';
+    pagEl.style.display = 'none';
+    return;
+  }
+
+  if (currentGroupFilter === 'all' && currentSourceFilter === 'all' && !searchQuery) {
+    const complianceItems = applySearchFilter(currentNews.filter(n => n._group === 'compliance'));
+    const newsItems = applySearchFilter(currentNews.filter(n => n._group !== 'compliance'));
+    let html = '';
+    if (complianceItems.length > 0) {
+      html += renderCollapsibleSection('compliance', 'Privacy & AI Compliance', complianceItems, 'compliance-badge');
+    }
+    if (newsItems.length > 0) {
+      html += renderCollapsibleSection('news', '新闻资讯', newsItems, 'news-badge');
+    }
+    if (!html) {
+      html = '<div class="news-empty"><p>搜索无结果</p></div>';
+    }
+    container.innerHTML = html;
+    pagEl.style.display = 'none';
+    return;
+  }
+
+  const filtered = getFilteredNews();
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="news-empty"><p>当前筛选无结果</p></div>';
+    pagEl.style.display = 'none';
+    return;
+  }
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  container.innerHTML = `<div class="news-grid">${pageItems.map(renderCard).join('')}</div>`;
+
+  if (totalPages > 1) {
+    pagEl.style.display = 'flex';
+    let ph = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>&lt;</button>`;
+    const maxShow = 7;
+    let sp = Math.max(1, currentPage - Math.floor(maxShow / 2));
+    let ep = Math.min(totalPages, sp + maxShow - 1);
+    if (ep - sp < maxShow - 1) sp = Math.max(1, ep - maxShow + 1);
+    if (sp > 1) ph += `<button class="page-btn" onclick="goPage(1)">1</button><span class="page-info">...</span>`;
+    for (let p = sp; p <= ep; p++) ph += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+    if (ep < totalPages) ph += `<span class="page-info">...</span><button class="page-btn" onclick="goPage(${totalPages})">${totalPages}</button>`;
+    ph += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>&gt;</button>`;
+    ph += `<span class="page-info">${start + 1}-${Math.min(start + PAGE_SIZE, filtered.length)} / ${filtered.length}</span>`;
+    pagEl.innerHTML = ph;
+  } else {
+    pagEl.style.display = 'none';
+  }
+}
+
+function renderCollapsibleSection(id, title, items, badgeClass) {
+  const maxPreview = 12;
+  const previewItems = items.slice(0, maxPreview);
+  const remaining = items.length - maxPreview;
+  return `<div class="news-section" id="section-${id}">
+    <div class="news-section-header" onclick="toggleSection('${id}')">
+      <span class="section-chevron">&#9660;</span>
+      <h3>${title}</h3>
+      <span class="section-badge ${badgeClass}">${items.length} 条</span>
+    </div>
+    <div class="news-section-body">
+      <div class="news-grid">${previewItems.map(renderCard).join('')}</div>
+      ${remaining > 0 ? `<div style="text-align:center;padding:16px;"><button class="btn btn-secondary btn-sm" onclick="setGroupFilter('${id}')">查看全部 ${items.length} 条 &rarr;</button></div>` : ''}
+    </div>
+  </div>`;
+}
+
+function toggleSection(id) {
+  document.getElementById(`section-${id}`).classList.toggle('collapsed');
+}
+
+function goPage(p) {
+  if (currentMode === 'history') {
+    const next = Math.max(1, Math.min(p, historyTotalPages || 1));
+    loadHistory(next);
+    return;
+  }
+  const filtered = getFilteredNews();
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  currentPage = Math.max(1, Math.min(p, totalPages));
+  renderNewsPage();
+  document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderCard(item) {
+  const isCompliance = item._group === 'compliance';
+  const sourceLabel = isCompliance
+    ? (item._source || '').replace('compliance_', '').replace(/_/g, ' ').toUpperCase()
+    : (item._source || '').replace('get_', '').replace(/_/g, ' ').toUpperCase();
+  const title = item.title || '无标题';
+  const link = safeHref(item.link);
+  const summary = toPlainText(item.summary || item.description || '');
+  const truncSummary = summary.length > 120 ? summary.substring(0, 120) + '...' : summary;
+  const meta = [];
+  if (item._region) meta.push(item._region);
+  if (item.popularity) meta.push(item.popularity);
+  if (item.author) meta.push(item.author);
+
+  return `<div class="news-card">
+    <div class="news-card__source ${isCompliance ? 'source-compliance' : 'source-news'}">${sourceLabel}</div>
+    <div class="news-card__title">${link !== '#' ? `<a href="${link}" target="_blank">${esc(title)}</a>` : `<strong>${esc(title)}</strong>`}</div>
+    ${truncSummary ? `<div class="news-card__summary">${esc(truncSummary)}</div>` : ''}
+    ${meta.length ? `<div class="news-card__meta">${meta.map(m => `<span>${esc(String(m))}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function renderHistoryCard(item) {
+  const isCompliance = (item._group || '') === 'compliance';
+  const sourceLabel = isCompliance
+    ? (item._source || '').replace('compliance_', '').replace(/_/g, ' ').toUpperCase()
+    : (item._source || '').replace('get_', '').replace(/_/g, ' ').toUpperCase();
+  const title = item.title || '无标题';
+  const link = safeHref(item.link);
+  const summary = toPlainText(item.summary || item.description || '');
+  const truncSummary = summary.length > 140 ? summary.substring(0, 140) + '...' : summary;
+  const seen = item.last_seen ? new Date(item.last_seen).toLocaleString('zh-CN') : '-';
+  return `<div class="news-card">
+    <div class="news-card__source ${isCompliance ? 'source-compliance' : 'source-news'}">${esc(sourceLabel || 'HISTORY')}</div>
+    <div class="news-card__title">${link !== '#' ? `<a href="${link}" target="_blank">${esc(title)}</a>` : `<strong>${esc(title)}</strong>`}</div>
+    ${truncSummary ? `<div class="news-card__summary">${esc(truncSummary)}</div>` : ''}
+    <div class="news-card__meta"><span>最近抓取: ${esc(seen)}</span></div>
+    <div class="history-card-actions">
+      <button class="fav-btn ${item.isFavorite ? 'active' : ''}" onclick="toggleHistoryFavorite('${esc(item.id)}', ${item.isFavorite ? 'false' : 'true'})">${item.isFavorite ? '★ 已收藏' : '☆ 收藏'}</button>
+    </div>
+  </div>`;
+}
+
+async function toggleHistoryFavorite(id, favorite) {
+  const d = await api('/api/history/favorite', {
+    method: 'POST',
+    body: JSON.stringify({ id, favorite }),
+  });
+  if (!d.ok) {
+    toast(`收藏操作失败：${d.error}`, 'error');
+    return;
+  }
+  await loadHistory(currentPage || 1);
+}
+
+// ========== Email ==========
+let selectedSendNewsGroups = [];
+let selectedSendCompGroups = [];
+
+function sendEmailNow() {
+  openSendTargetModal();
+}
+
+async function sendWebhookNow() {
+  const btn = document.getElementById('btnSendWebhook');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 发送中...';
+  const d = await api('/api/send-webhook', { method: 'POST', body: '{}' });
+  btn.innerHTML = '发送 Webhook';
+  updateActionButtons();
+  if (!d.ok) { toast(`Webhook 发送失败：${d.error}`, 'error'); return; }
+  toast('Webhook 发送成功', 'success');
+}
+
+function openSendTargetModal() {
+  selectedSendNewsGroups = [];
+  selectedSendCompGroups = [];
+  renderSendGroupChips();
+  document.getElementById('sendTargetModal').classList.add('open');
+}
+
+function closeSendTargetModal() {
+  document.getElementById('sendTargetModal').classList.remove('open');
+}
+
+function renderSendGroupChips() {
+  const renderChips = (containerId, selectedArr, toggleFn) => {
+    const el = document.getElementById(containerId);
+    if (!recipientGroups.length) { el.innerHTML = '<span style="font-size:0.78rem;color:var(--text-tertiary);">暂无收件人组</span>'; return; }
+    el.innerHTML = recipientGroups.map(g => {
+      const sel = selectedArr.includes(g.id);
+      return `<span class="group-chip ${sel ? 'selected' : ''}" style="${sel ? `background:${safeColor(g.color)};color:#fff;` : ''}" onclick="${toggleFn}('${esc(g.id)}')">
+        <span class="chip-dot" style="background:${sel ? '#fff' : safeColor(g.color)};"></span>${esc(g.name)}
+      </span>`;
+    }).join('');
+  };
+  renderChips('sendNewsGroups', selectedSendNewsGroups, 'toggleSendNewsGroup');
+  renderChips('sendComplianceGroups', selectedSendCompGroups, 'toggleSendCompGroup');
+}
+
+function toggleSendNewsGroup(id) {
+  const idx = selectedSendNewsGroups.indexOf(id);
+  if (idx >= 0) selectedSendNewsGroups.splice(idx, 1); else selectedSendNewsGroups.push(id);
+  renderSendGroupChips();
+}
+function toggleSendCompGroup(id) {
+  const idx = selectedSendCompGroups.indexOf(id);
+  if (idx >= 0) selectedSendCompGroups.splice(idx, 1); else selectedSendCompGroups.push(id);
+  renderSendGroupChips();
+}
+
+async function confirmSendEmail() {
+  if (selectedSendNewsGroups.length === 0 && selectedSendCompGroups.length === 0) {
+    toast('请至少选择一个收件人组', 'error');
+    return;
+  }
+  closeSendTargetModal();
+  const btn = document.getElementById('btnSendEmail');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 发送中...';
+  const body = { newsTargetGroups: selectedSendNewsGroups, complianceTargetGroups: selectedSendCompGroups };
+  const d = await api('/api/send-email', { method: 'POST', body: JSON.stringify(body) });
+  btn.disabled = false; btn.innerHTML = '发送邮件';
+  if (!d.ok) { toast(`发送失败：${d.error}`, 'error'); return; }
+  toast(`邮件已发送至 ${d.to?.join(', ')}`, 'success');
+}
+
+function exportTxt() { window.open('/api/export', '_blank'); }
+
+// ========== Settings ==========
+async function openSettings() {
+  configLoadPromise = loadConfig();
+  await configLoadPromise;
+  document.getElementById('settingsModal').classList.add('open');
+  renderSourceSettings();
+}
+function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
+
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById(`tab-${id}`).classList.add('active');
+  if (id === 'sources') renderSourceSettings();
+  if (id === 'recipients') { renderRecipientGroups(); renderRecipientCentric(); }
+}
+
+function renderSourceSettings() {
+  const newsEl = document.getElementById('settingsNewsSources');
+  newsEl.innerHTML = allNewsSources.map(s => {
+    const label = s.name.replace('get_', '').replace(/_/g, ' ');
+    return `<div class="source-limit-row">
+      <span class="name" title="${esc(s.description || '')}">${label}</span>
+      <span class="num-wrap">limit <input type="number" min="0" max="200" value="${s.limit ?? 30}" data-source="${s.name}" class="news-limit-input"></span>
+      <span class="num-wrap">days <input type="number" min="1" max="365" value="${s.recentDays || 3}" data-source-days="${s.name}" class="news-days-input"></span>
+    </div>`;
+  }).join('');
+
+  const compEl = document.getElementById('settingsComplianceSources');
+  compEl.innerHTML = allComplianceSources.map(s => {
+    return `<div class="source-limit-row">
+      <span class="region-tag" style="margin-right:6px;">${s.region}</span>
+      <span class="name">${esc(s.name)}</span>
+      <span class="num-wrap">limit <input type="number" min="0" max="100" value="${s.limit ?? 20}" data-compliance="${s.key}" class="compliance-limit-input"></span>
+      <span class="num-wrap">days <input type="number" min="1" max="365" value="${s.recentDays || 3}" data-compliance-days="${s.key}" class="compliance-days-input"></span>
+    </div>`;
+  }).join('');
+
+  initializeBatchInputs('news', allNewsSources);
+  initializeBatchInputs('compliance', allComplianceSources);
+}
+
+async function loadConfig() {
+  await Promise.all([newsSourceSaveQueue, complianceSourceSaveQueue]);
+  const d = await api('/api/config');
+  if (!d.ok) return;
+  const c = d.config;
+  loadedConfigSnapshot = JSON.parse(JSON.stringify(c));
+  promptStatusLoaded = true;
+  promptDefaults = d.promptDefaults || {};
+  document.getElementById('aiBaseUrl').value = c.ai?.baseUrl || '';
+  document.getElementById('aiModelName').value = c.ai?.modelName || '';
+  document.getElementById('aiApiKey').value = '';
+  document.getElementById('aiApiKey').placeholder = c.ai?.apiKey === '***' ? '已配置（留空不变）' : 'sk-...';
+  persistedPromptValues = {
+    newsTop10Prompt: c.prompts?.newsTop10Prompt || promptDefaults.newsTop10Prompt || '',
+    complianceTop10Prompt: c.prompts?.complianceTop10Prompt || promptDefaults.complianceTop10Prompt || '',
+  };
+  document.getElementById('newsTop10Prompt').value = persistedPromptValues.newsTop10Prompt;
+  document.getElementById('complianceTop10Prompt').value = persistedPromptValues.complianceTop10Prompt;
+  updateAllPromptStatuses();
+  document.getElementById('webhookUrl').value = c.webhook?.url || '';
+  document.getElementById('webhookEnabled').checked = Boolean(c.webhook?.enabled);
+  document.getElementById('webhookLinkRenderMode').value = c.webhook?.linkRenderMode === 'plain' ? 'plain' : 'markdown';
+  document.getElementById('emailSmtpHost').value = c.email?.smtpHost || 'smtp.163.com';
+  document.getElementById('emailSmtpPort').value = c.email?.smtpPort || 465;
+  document.getElementById('emailSender').value = c.email?.senderEmail || '';
+  document.getElementById('emailPassword').value = '';
+  document.getElementById('emailPassword').placeholder = c.email?.senderPassword === '***' ? '已配置（留空不变）' : '授权码';
+  loadRecipientGroups();
+  loadScheduleTasks();
+  if (c.sources) {
+    allNewsSources.forEach(s => {
+      const v = c.sources[s.name];
+      if (v !== undefined) {
+        if (typeof v === 'boolean') { s.enabled = v; }
+        else if (typeof v === 'object') { s.enabled = v.enabled !== false; s.limit = v.limit ?? 30; s.recentDays = v.recentDays || 3; }
+      }
+    });
+    renderNewsSources();
+  }
+  if (c.complianceSources) {
+    allComplianceSources.forEach(s => {
+      const v = c.complianceSources[s.key];
+      if (v && typeof v === 'object') {
+        s.enabled = v.enabled !== false;
+        s.limit = v.limit ?? 20;
+        s.recentDays = v.recentDays || 3;
+      }
+    });
+    renderComplianceSources();
+  }
+  loadedNewsSourceSnapshot = buildNewsSourceSnapshot();
+  loadedComplianceSourceSnapshot = buildComplianceSourceSnapshot();
+  renderSourceSettings();
+}
+
+async function saveSettings() {
+  await configLoadPromise;
+  await Promise.all([newsSourceSaveQueue, complianceSourceSaveQueue]);
+  const cfg = {
+    ai: { baseUrl: document.getElementById('aiBaseUrl').value.trim(), modelName: document.getElementById('aiModelName').value.trim() },
+    prompts: {
+      newsTop10Prompt: document.getElementById('newsTop10Prompt').value.trim(),
+      complianceTop10Prompt: document.getElementById('complianceTop10Prompt').value.trim(),
+    },
+    webhook: {
+      enabled: document.getElementById('webhookEnabled').checked,
+      url: document.getElementById('webhookUrl').value.trim(),
+      linkRenderMode: document.getElementById('webhookLinkRenderMode').value === 'plain' ? 'plain' : 'markdown',
+    },
+    email: {
+      smtpHost: document.getElementById('emailSmtpHost').value.trim(),
+      smtpPort: parseInt(document.getElementById('emailSmtpPort').value) || 465,
+      senderEmail: document.getElementById('emailSender').value.trim(),
+    },
+  };
+  const k = document.getElementById('aiApiKey').value.trim();
+  if (k) cfg.ai.apiKey = k;
+  const p = document.getElementById('emailPassword').value.trim();
+  if (p) cfg.email.senderPassword = p;
+
+  const sources = {};
+  document.querySelectorAll('.news-limit-input').forEach(inp => {
+    const name = inp.dataset.source;
+    const s = allNewsSources.find(x => x.name === name);
+    const parsedLimit = Number(inp.value);
+    const limit = inp.value === '' || !Number.isFinite(parsedLimit) ? 30 : parsedLimit;
+    sources[name] = { enabled: s ? s.enabled : true, limit, recentDays: s?.recentDays || 3 };
+    if (s) s.limit = limit;
+  });
+  document.querySelectorAll('.news-days-input').forEach(inp => {
+    const name = inp.dataset.sourceDays;
+    const s = allNewsSources.find(x => x.name === name);
+    const recentDays = parseInt(inp.value) || 3;
+    sources[name] = { ...(sources[name] || {}), enabled: s ? s.enabled : true, limit: sources[name]?.limit ?? s?.limit ?? 30, recentDays };
+    if (s) s.recentDays = recentDays;
+  });
+  cfg.sources = sources;
+
+  const complianceSources = {};
+  document.querySelectorAll('.compliance-limit-input').forEach(inp => {
+    const key = inp.dataset.compliance;
+    const s = allComplianceSources.find(x => x.key === key);
+    const parsedLimit = Number(inp.value);
+    const limit = inp.value === '' || !Number.isFinite(parsedLimit) ? 20 : parsedLimit;
+    complianceSources[key] = { enabled: s ? s.enabled : true, limit, recentDays: s?.recentDays || 3 };
+    if (s) s.limit = limit;
+  });
+  document.querySelectorAll('.compliance-days-input').forEach(inp => {
+    const key = inp.dataset.complianceDays;
+    const s = allComplianceSources.find(x => x.key === key);
+    const recentDays = parseInt(inp.value) || 3;
+    complianceSources[key] = { ...(complianceSources[key] || {}), enabled: s ? s.enabled : true, limit: complianceSources[key]?.limit ?? s?.limit ?? 20, recentDays };
+    if (s) s.recentDays = recentDays;
+  });
+  cfg.complianceSources = complianceSources;
+  const sourcesChanged = JSON.stringify(cfg.sources) !== JSON.stringify(loadedNewsSourceSnapshot || {});
+  const complianceSourcesChanged = JSON.stringify(cfg.complianceSources) !== JSON.stringify(loadedComplianceSourceSnapshot || {});
+  const promptsChanged = JSON.stringify(cfg.prompts) !== JSON.stringify(persistedPromptValues);
+  if (!sourcesChanged) delete cfg.sources;
+  if (!complianceSourcesChanged) delete cfg.complianceSources;
+  if (!promptsChanged) delete cfg.prompts;
+
+  const d = await api('/api/config', { method: 'POST', body: JSON.stringify(cfg) });
+  if (d.ok) {
+    if (promptsChanged) {
+      persistedPromptValues = {
+        newsTop10Prompt: document.getElementById('newsTop10Prompt').value.trim(),
+        complianceTop10Prompt: document.getElementById('complianceTop10Prompt').value.trim(),
+      };
+      updateAllPromptStatuses();
+    }
+    if (sourcesChanged) loadedNewsSourceSnapshot = buildNewsSourceSnapshot();
+    if (complianceSourcesChanged) loadedComplianceSourceSnapshot = buildComplianceSourceSnapshot();
+    if (promptsChanged || sourcesChanged || complianceSourcesChanged) {
+      if (sourcesChanged) {
+        currentNews = currentNews.filter(item => item._group === 'compliance');
+        currentDigest = [];
+      }
+      if (complianceSourcesChanged) {
+        currentNews = currentNews.filter(item => item._group !== 'compliance');
+        currentComplianceDigest = [];
+        currentCommunityPulse = null;
+      }
+      if (promptsChanged) {
+        currentDigest = [];
+        currentComplianceDigest = [];
+        currentCommunityPulse = null;
+      }
+      if (sourcesChanged || complianceSourcesChanged) {
+        currentPage = 1;
+        currentMode = 'latest';
+        updateModeButtons();
+        renderAll();
+      } else {
+        renderDigest();
+      }
+    }
+    toast('设置已保存', 'success');
+    closeSettings();
+    loadStatus();
+  }
+  else { toast(`保存失败：${d.error}`, 'error'); }
+}
+
+function resetPromptField(field) {
+  const textarea = document.getElementById(field);
+  if (!textarea) return;
+  textarea.value = promptDefaults[field] || '';
+  updatePromptStatus(field);
+}
+
+function resetAllPromptFields() {
+  resetPromptField('newsTop10Prompt');
+  resetPromptField('complianceTop10Prompt');
+}
+
+function updatePromptStatus(field) {
+  const textarea = document.getElementById(field);
+  const statusEl = document.getElementById(`${field}Status`);
+  if (!textarea || !statusEl) return;
+  const currentValue = textarea.value.trim();
+  const defaultValue = String(promptDefaults[field] || '').trim();
+  const persistedValue = String(persistedPromptValues[field] || '').trim();
+  if (!currentValue) {
+    statusEl.textContent = promptStatusLoaded ? '当前为空，保存时会校验失败' : '默认 Prompt 加载中...';
+    return;
+  }
+  if (currentValue === persistedValue) {
+    statusEl.textContent = currentValue === defaultValue
+      ? '当前显示：系统默认 Prompt'
+      : '当前显示：已保存的自定义 Prompt';
+    return;
+  }
+  statusEl.textContent = currentValue === defaultValue
+    ? '当前显示：系统默认 Prompt（保存后生效）'
+    : '当前显示：未保存修改（保存后生效）';
+}
+
+function updateAllPromptStatuses() {
+  updatePromptStatus('newsTop10Prompt');
+  updatePromptStatus('complianceTop10Prompt');
+}
+
+async function testWebhook() {
+  const url = document.getElementById('webhookUrl').value.trim();
+  const linkRenderMode = document.getElementById('webhookLinkRenderMode').value === 'plain' ? 'plain' : 'markdown';
+  if (!url) { toast('请先填写 Webhook URL', 'error'); return; }
+  const saved = await api('/api/config', {
+    method: 'POST',
+    body: JSON.stringify({ webhook: { enabled: true, url, linkRenderMode } }),
+  });
+  if (!saved.ok) { toast(`保存 Webhook 失败：${saved.error}`, 'error'); return; }
+  const d = await api('/api/webhook/test', { method: 'POST', body: '{}' });
+  if (d.ok) toast('Webhook 测试发送成功', 'success');
+  else toast(`Webhook 测试失败：${d.error}`, 'error');
+}
+
+// ========== Recipient Groups ==========
+let recipientGroups = [];
+let editGroupColor = '#2563eb';
+
+async function loadRecipientGroups() {
+  const d = await api('/api/recipient-groups');
+  if (d.ok) { recipientGroups = d.groups || []; renderRecipientGroups(); renderRecipientCentric(); }
+}
+
+function renderRecipientGroups() {
+  const el = document.getElementById('recipientGroupList');
+  if (!recipientGroups.length) {
+    el.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.82rem;padding:8px 0;">暂无收件人组，点击「+ 新建组」创建</div>';
+    return;
+  }
+  el.innerHTML = recipientGroups.map(g => {
+    const emailPreview = g.emails.length > 0 ? g.emails.join(', ') : '(空)';
+    return `<div class="rg-card">
+      <span class="rg-card__dot" style="background:${safeColor(g.color)};"></span>
+      <div class="rg-card__info">
+        <div class="rg-card__name">${esc(g.name)}</div>
+        <div class="rg-card__emails" title="${esc(emailPreview)}">${g.emails.length} 人 - ${esc(emailPreview)}</div>
+      </div>
+      <div class="rg-card__actions">
+        <button onclick="editGroup('${esc(g.id)}')" title="编辑">&#9998;</button>
+        <button class="btn-danger" onclick="deleteGroup('${esc(g.id)}')" title="删除">&#128465;</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecipientCentric() {
+  const el = document.getElementById('recipientCentricView');
+  const emailMap = {};
+  for (const g of recipientGroups) {
+    for (const email of g.emails) {
+      if (!emailMap[email]) emailMap[email] = [];
+      emailMap[email].push(g);
+    }
+  }
+  const entries = Object.entries(emailMap).sort((a, b) => a[0].localeCompare(b[0]));
+  if (!entries.length) {
+    el.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.82rem;">暂无收件人</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([email, groups]) => {
+    const tags = groups.map(g =>
+      `<span class="rcpt-tag" style="background:${safeColor(g.color)};" title="点击从「${esc(g.name)}」中移除">
+        ${esc(g.name)}<span class="tag-x" onclick="removeEmailFromGroup('${esc(email)}','${esc(g.id)}')">&times;</span>
+      </span>`
+    ).join('');
+    return `<div class="rcpt-row">
+      <span class="rcpt-row__email">${esc(email)}</span>
+      <div class="rcpt-row__tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function openGroupEditor(group) {
+  const panel = document.getElementById('groupEditorPanel');
+  panel.style.display = 'block';
+  document.getElementById('groupEditId').value = group ? group.id : '';
+  document.getElementById('groupName').value = group ? group.name : '';
+  document.getElementById('groupEmails').value = group ? group.emails.join('\n') : '';
+  editGroupColor = group ? (group.color || '#2563eb') : '#2563eb';
+  updateColorDots();
+}
+
+function cancelGroupEditor() {
+  document.getElementById('groupEditorPanel').style.display = 'none';
+}
+
+function pickGroupColor(c) {
+  editGroupColor = c;
+  updateColorDots();
+}
+
+function updateColorDots() {
+  document.querySelectorAll('.color-dot').forEach(dot => {
+    dot.classList.toggle('selected', dot.dataset.color === editGroupColor);
+  });
+}
+
+async function saveGroup() {
+  const id = document.getElementById('groupEditId').value;
+  const name = document.getElementById('groupName').value.trim();
+  if (!name) { toast('请输入组名称', 'error'); return; }
+  const rawEmails = document.getElementById('groupEmails').value;
+  const emails = rawEmails.split(/[\n,;]+/).map(e => e.trim()).filter(e => e && e.includes('@'));
+
+  const group = { name, color: editGroupColor, emails };
+  let d;
+  if (id) {
+    d = await api(`/api/recipient-groups/${id}`, { method: 'PUT', body: JSON.stringify(group) });
+  } else {
+    d = await api('/api/recipient-groups', { method: 'POST', body: JSON.stringify(group) });
+  }
+  if (d.ok) {
+    toast(id ? '组已更新' : '组已创建', 'success');
+    cancelGroupEditor();
+    loadRecipientGroups();
+  } else {
+    toast(d.error, 'error');
+  }
+}
+
+function editGroup(id) {
+  const g = recipientGroups.find(x => x.id === id);
+  if (g) openGroupEditor(g);
+}
+
+async function deleteGroup(id) {
+  const g = recipientGroups.find(x => x.id === id);
+  if (!g) return;
+  if (!confirm(`确定删除收件人组「${g.name}」？`)) return;
+  const d = await api(`/api/recipient-groups/${id}`, { method: 'DELETE' });
+  if (d.ok) { toast('已删除', 'success'); loadRecipientGroups(); }
+  else { toast(d.error, 'error'); }
+}
+
+async function removeEmailFromGroup(email, groupId) {
+  const g = recipientGroups.find(x => x.id === groupId);
+  if (!g) return;
+  const emails = g.emails.filter(e => e !== email);
+  const d = await api(`/api/recipient-groups/${groupId}`, { method: 'PUT', body: JSON.stringify({ emails }) });
+  if (d.ok) { toast(`已从「${g.name}」中移除`, 'success'); loadRecipientGroups(); }
+}
+
+function renderTaskGroupChips(containerId, selectedIds, toggleFn) {
+  const el = document.getElementById(containerId);
+  if (!recipientGroups.length) { el.innerHTML = '<span style="font-size:0.78rem;color:var(--text-tertiary);">请先在「收件人」标签页创建收件人组</span>'; return; }
+  el.innerHTML = recipientGroups.map(g => {
+    const sel = selectedIds.includes(g.id);
+    return `<span class="group-chip ${sel ? 'selected' : ''}" style="${sel ? `background:${safeColor(g.color)};color:#fff;` : ''}" onclick="${toggleFn}('${esc(g.id)}')">
+      <span class="chip-dot" style="background:${sel ? '#fff' : safeColor(g.color)};"></span>${esc(g.name)}
+    </span>`;
+  }).join('');
+}
+
+let taskNewsTargetGroups = [];
+let taskCompTargetGroups = [];
+
+function toggleTaskNewsGroup(id) {
+  const idx = taskNewsTargetGroups.indexOf(id);
+  if (idx >= 0) taskNewsTargetGroups.splice(idx, 1); else taskNewsTargetGroups.push(id);
+  renderTaskGroupChips('taskNewsGroups', taskNewsTargetGroups, 'toggleTaskNewsGroup');
+}
+function toggleTaskCompGroup(id) {
+  const idx = taskCompTargetGroups.indexOf(id);
+  if (idx >= 0) taskCompTargetGroups.splice(idx, 1); else taskCompTargetGroups.push(id);
+  renderTaskGroupChips('taskComplianceGroups', taskCompTargetGroups, 'toggleTaskCompGroup');
+}
+
+// ========== Schedule Tasks ==========
+let scheduleTasks = [];
+let dailyTimes = [];
+let currentSchedType = 'daily';
+
+async function loadScheduleTasks() {
+  const d = await api('/api/schedules');
+  if (d.ok) { scheduleTasks = d.schedules || []; renderScheduleTaskList(); }
+}
+
+function renderScheduleTaskList() {
+  const el = document.getElementById('scheduleTaskList');
+  if (!scheduleTasks.length) {
+    el.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.82rem;padding:8px 0;">暂无定时任务，点击「+ 新建任务」创建</div>';
+    return;
+  }
+  el.innerHTML = scheduleTasks.map(t => {
+    const lockCls = t.locked ? 'locked' : '';
+    const lockIcon = t.locked ? '&#128274;' : '&#128275;';
+    let runInfo = '';
+    if (t.lastRun) {
+      const d = new Date(t.lastRun);
+      const statusCls = t.lastStatus === 'success' ? 'status-ok' : 'status-err';
+      const statusTxt = t.lastStatus === 'success' ? '成功' : (t.lastStatus || '-');
+      runInfo = `<div class="sched-card__run">上次: ${d.toLocaleString('zh-CN')} <span class="${statusCls}">${esc(statusTxt)}</span></div>`;
+    }
+    return `<div class="sched-card">
+      <div class="toggle ${t.enabled ? 'active' : ''}" onclick="toggleTask('${esc(t.id)}')" style="flex-shrink:0;"></div>
+      <div class="sched-card__info">
+        <div class="sched-card__name">
+          ${esc(t.name)}
+          <span class="lock-icon ${lockCls}" onclick="toggleLock('${esc(t.id)}')" title="${t.locked ? '点击解锁' : '点击锁定'}">${lockIcon}</span>
+        </div>
+        <div class="sched-card__desc">${describeSchedule(t)}</div>
+        ${runInfo}
+      </div>
+      <div class="sched-card__actions">
+        <button onclick="editTask('${esc(t.id)}')" title="编辑">&#9998;</button>
+        <button class="btn-danger" onclick="deleteTask('${esc(t.id)}')" ${t.locked ? 'disabled title="已锁定"' : 'title="删除"'}>&#128465;</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function describeSchedule(t) {
+  let time = '';
+  if (t.type === 'daily') {
+    const times = (t.times || [t.time || '08:00']).join(', ');
+    time = `每天 ${times}`;
+  } else if (t.type === 'interval') {
+    time = `每 ${t.interval || 6} 小时`;
+  } else if (t.type === 'weekly') {
+    const dayNames = ['日','一','二','三','四','五','六'];
+    const days = (t.days || []).map(d => dayNames[d]).join(', ');
+    time = `每周${days} ${t.time || '08:00'}`;
+  } else {
+    time = t.cron || '-';
+  }
+  const nGroups = (t.newsTargetGroups || []).length;
+  const cGroups = (t.complianceTargetGroups || []).length;
+  const groupInfo = (nGroups || cGroups) ? ` → 新闻${nGroups}组 / 合规${cGroups}组` : '';
+  const webhookInfo = t.sendComplianceWebhook === false ? ' / Webhook关' : ' / Webhook开';
+  return time + groupInfo + webhookInfo;
+}
+
+function buildCron(type, data) {
+  if (type === 'daily') {
+    const times = data.times || ['08:00'];
+    if (times.length === 1) {
+      const [h, m] = times[0].split(':');
+      return `${parseInt(m)} ${parseInt(h)} * * *`;
+    }
+    const hours = times.map(t => parseInt(t.split(':')[0]));
+    const mins = times.map(t => parseInt(t.split(':')[1]));
+    const uniqueMins = [...new Set(mins)];
+    if (uniqueMins.length === 1) {
+      return `${uniqueMins[0]} ${hours.join(',')} * * *`;
+    }
+    return `${mins[0]} ${hours[0]} * * *`;
+  }
+  if (type === 'interval') {
+    return `0 */${data.interval || 6} * * *`;
+  }
+  if (type === 'weekly') {
+    const [h, m] = (data.time || '08:00').split(':');
+    const days = (data.days || [1,2,3,4,5]).join(',');
+    return `${parseInt(m)} ${parseInt(h)} * * ${days}`;
+  }
+  return '0 8 * * *';
+}
+
+function openTaskEditor(task) {
+  const panel = document.getElementById('taskEditorPanel');
+  panel.style.display = 'block';
+  document.getElementById('taskEditId').value = task ? task.id : '';
+  document.getElementById('taskName').value = task ? task.name : '';
+  if (task) {
+    currentSchedType = task.type || 'daily';
+    if (task.type === 'daily') {
+      dailyTimes = task.times ? [...task.times] : [task.time || '08:00'];
+    } else if (task.type === 'interval') {
+      document.getElementById('intervalHours').value = task.interval || 6;
+    } else if (task.type === 'weekly') {
+      document.getElementById('weeklyTime').value = task.time || '08:00';
+      document.querySelectorAll('.weekday-cb').forEach(cb => {
+        cb.checked = (task.days || []).includes(parseInt(cb.value));
+      });
+    }
+  } else {
+    currentSchedType = 'daily';
+    dailyTimes = ['08:00'];
+    document.getElementById('intervalHours').value = 6;
+    document.getElementById('weeklyTime').value = '08:00';
+    document.querySelectorAll('.weekday-cb').forEach(cb => { cb.checked = [1,2,3,4,5].includes(parseInt(cb.value)); });
+  }
+  document.getElementById('taskSendWebhook').checked = task ? (task.sendComplianceWebhook !== false) : true;
+  taskNewsTargetGroups = task ? (task.newsTargetGroups || recipientGroups.map(g => g.id)) : recipientGroups.map(g => g.id);
+  taskCompTargetGroups = task ? (task.complianceTargetGroups || recipientGroups.map(g => g.id)) : recipientGroups.map(g => g.id);
+  setSchedType(currentSchedType);
+  renderDailyTimes();
+  renderTaskGroupChips('taskNewsGroups', taskNewsTargetGroups, 'toggleTaskNewsGroup');
+  renderTaskGroupChips('taskComplianceGroups', taskCompTargetGroups, 'toggleTaskCompGroup');
+}
+
+function cancelTaskEditor() {
+  document.getElementById('taskEditorPanel').style.display = 'none';
+}
+
+function setSchedType(type) {
+  currentSchedType = type;
+  document.querySelectorAll('.sched-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+  document.querySelectorAll('.sched-detail').forEach(el => { el.style.display = 'none'; });
+  const detail = document.getElementById(`schedDetail-${type}`);
+  if (detail) detail.style.display = 'block';
+}
+
+function renderDailyTimes() {
+  const el = document.getElementById('dailyTimeList');
+  el.innerHTML = dailyTimes.map((t, i) => `<span class="time-tag">${t}<span class="remove-time" onclick="removeDailyTime(${i})">&times;</span></span>`).join('');
+}
+
+function addDailyTime() {
+  const inp = document.getElementById('dailyTimeInput');
+  const v = inp.value;
+  if (!v) return;
+  if (dailyTimes.includes(v)) { toast('该时间已存在', 'error'); return; }
+  dailyTimes.push(v);
+  dailyTimes.sort();
+  renderDailyTimes();
+  inp.value = '';
+}
+
+function removeDailyTime(idx) {
+  dailyTimes.splice(idx, 1);
+  renderDailyTimes();
+}
+
+async function saveTask() {
+  const id = document.getElementById('taskEditId').value;
+  const name = document.getElementById('taskName').value.trim();
+  if (!name) { toast('请输入任务名称', 'error'); return; }
+
+  const task = {
+    name,
+    type: currentSchedType,
+    enabled: true,
+    newsTargetGroups: [...taskNewsTargetGroups],
+    complianceTargetGroups: [...taskCompTargetGroups],
+    sendComplianceWebhook: document.getElementById('taskSendWebhook').checked,
+  };
+  if (currentSchedType === 'daily') {
+    if (!dailyTimes.length) { toast('请至少添加一个执行时间', 'error'); return; }
+    task.times = [...dailyTimes];
+    task.time = dailyTimes[0];
+    task.cron = buildCron('daily', { times: dailyTimes });
+  } else if (currentSchedType === 'interval') {
+    task.interval = parseInt(document.getElementById('intervalHours').value) || 6;
+    task.cron = buildCron('interval', { interval: task.interval });
+  } else if (currentSchedType === 'weekly') {
+    task.time = document.getElementById('weeklyTime').value || '08:00';
+    task.days = [...document.querySelectorAll('.weekday-cb:checked')].map(cb => parseInt(cb.value));
+    if (!task.days.length) { toast('请至少选择一天', 'error'); return; }
+    task.cron = buildCron('weekly', task);
+  }
+
+  let d;
+  if (id) {
+    d = await api(`/api/schedules/${id}`, { method: 'PUT', body: JSON.stringify(task) });
+  } else {
+    d = await api('/api/schedules', { method: 'POST', body: JSON.stringify(task) });
+  }
+  if (d.ok) {
+    toast(id ? '任务已更新' : '任务已创建', 'success');
+    cancelTaskEditor();
+    loadScheduleTasks();
+    loadStatus();
+  } else {
+    toast(d.error, 'error');
+  }
+}
+
+function editTask(id) {
+  const task = scheduleTasks.find(t => t.id === id);
+  if (task) openTaskEditor(task);
+}
+
+async function toggleTask(id) {
+  const task = scheduleTasks.find(t => t.id === id);
+  if (!task) return;
+  const d = await api(`/api/schedules/${id}`, { method: 'PUT', body: JSON.stringify({ enabled: !task.enabled }) });
+  if (d.ok) { loadScheduleTasks(); loadStatus(); }
+}
+
+async function toggleLock(id) {
+  const task = scheduleTasks.find(t => t.id === id);
+  if (!task) return;
+  const d = await api(`/api/schedules/${id}`, { method: 'PUT', body: JSON.stringify({ locked: !task.locked }) });
+  if (d.ok) {
+    toast(task.locked ? '已解锁' : '已锁定', 'success');
+    loadScheduleTasks();
+  }
+}
+
+async function deleteTask(id) {
+  const task = scheduleTasks.find(t => t.id === id);
+  if (!task) return;
+  if (task.locked) { toast('该任务已锁定，请先解锁', 'error'); return; }
+  if (!confirm(`确定删除任务「${task.name}」？`)) return;
+  const d = await api(`/api/schedules/${id}`, { method: 'DELETE' });
+  if (d.ok) { toast('已删除', 'success'); loadScheduleTasks(); loadStatus(); }
+  else { toast(d.error, 'error'); }
+}
+
+// ========== Autostart ==========
+async function loadAutostartStatus() {
+  const d = await api('/api/autostart/status');
+  isAutostartEnabled = d.ok && d.enabled;
+  updateAutostartToggle();
+}
+
+async function toggleAutostart() {
+  const action = isAutostartEnabled ? 'disable' : 'enable';
+  const d = await api(`/api/autostart/${action}`, { method: 'POST', body: '{}' });
+  if (d.ok) {
+    isAutostartEnabled = !isAutostartEnabled;
+    updateAutostartToggle();
+    toast(d.message, 'success');
+    setTimeout(() => { loadStatus(); refreshServiceLogs(); }, 1200);
+  } else {
+    toast(d.error, 'error');
+  }
+}
+
+function updateAutostartToggle() {
+  document.getElementById('autostartToggle').className = `toggle ${isAutostartEnabled ? 'active' : ''}`;
+  document.getElementById('autostartLabel').textContent = isAutostartEnabled ? '已启用（开机自动运行）' : '未启用';
+}
+
+function renderServiceStatus() {
+  const label = document.getElementById('serviceStatusLabel');
+  if (!label) return;
+  if (backgroundService.running) {
+    label.textContent = backgroundService.pid ? `运行中 · 守护进程 PID ${backgroundService.pid}` : '运行中';
+    label.style.color = 'var(--accent-emerald)';
+  } else {
+    label.textContent = '未运行';
+    label.style.color = 'var(--text-secondary)';
+  }
+}
+
+async function loadServiceStatus() {
+  const d = await api('/api/service/status');
+  if (!d.ok) {
+    backgroundService = { running: false, pid: null, autostartEnabled: isAutostartEnabled };
+    renderServiceStatus();
+    return;
+  }
+  backgroundService = d.service || { running: false, pid: null, autostartEnabled: false };
+  renderServiceStatus();
+}
+
+async function startBackgroundService() {
+  const d = await api('/api/service/start', { method: 'POST', body: '{}' });
+  if (!d.ok) { toast(d.error, 'error'); return; }
+  toast(d.message, 'success');
+  setTimeout(() => { loadStatus(); refreshServiceLogs(); }, 1200);
+}
+
+async function stopBackgroundService() {
+  if (!confirm('停止后台服务后，当前页面会失去连接。确定继续吗？')) return;
+  const d = await api('/api/service/stop', { method: 'POST', body: '{}' });
+  if (!d.ok) { toast(d.error, 'error'); return; }
+  toast(d.message, 'success');
+  backgroundService = { ...backgroundService, running: false, pid: null };
+  renderServiceStatus();
+}
+
+async function restartBackgroundService() {
+  const d = await api('/api/service/restart', { method: 'POST', body: '{}' });
+  if (!d.ok) { toast(d.error, 'error'); return; }
+  toast(d.message, 'success');
+  backgroundService = { ...backgroundService, running: false, pid: null };
+  renderServiceStatus();
+  setTimeout(() => { loadStatus(); refreshServiceLogs(); }, 3500);
+}
+
+async function refreshServiceLogs() {
+  const d = await api('/api/service/logs?lines=80');
+  const autostartEl = document.getElementById('serviceAutostartLog');
+  const stdoutEl = document.getElementById('serviceStdoutLog');
+  const stderrEl = document.getElementById('serviceStderrLog');
+  if (!autostartEl || !stdoutEl || !stderrEl) return;
+  if (!d.ok) {
+    autostartEl.textContent = '日志读取失败';
+    stdoutEl.textContent = '日志读取失败';
+    stderrEl.textContent = d.error || '日志读取失败';
+    return;
+  }
+  autostartEl.textContent = d.autostart || '暂无启动日志';
+  stdoutEl.textContent = d.stdout || '暂无 stdout 日志';
+  stderrEl.textContent = d.stderr || '暂无 stderr 日志';
+}
+
+// ========== Status ==========
+function updateStatusSummary() {
+  const dot = document.getElementById('mcpDot');
+  const isOnline = dot && dot.classList.contains('online');
+  const schedEl = document.getElementById('scheduleStatus');
+  const schedText = schedEl ? schedEl.textContent : '';
+  const parts = [];
+  parts.push(isOnline ? 'MCP 在线' : 'MCP 离线');
+  if (schedText && schedText !== '未启用') parts.push(schedText);
+  document.getElementById('statusSummary').textContent = parts.join(' · ');
+}
+
+async function loadStatus() {
+  const d = await api('/api/status');
+  if (!d.ok) return;
+  const s = d.scheduler;
+  document.getElementById('scheduleStatus').textContent = s.activeTasks > 0 ? `${s.activeTasks} 个任务运行中` : '未启用';
+  if (d.mcp?.connected) {
+    document.getElementById('mcpDot').className = 'status-dot online';
+    document.getElementById('mcpStatus').textContent = '在线';
+  } else {
+    document.getElementById('mcpDot').className = 'status-dot offline';
+    document.getElementById('mcpStatus').textContent = '离线';
+  }
+  if (d.service) {
+    backgroundService = d.service;
+    renderServiceStatus();
+  } else {
+    loadServiceStatus();
+  }
+  updateStatusSummary();
+}
+
+setInterval(loadStatus, 30000);
+init();
+</script>
+</body>
+</html>

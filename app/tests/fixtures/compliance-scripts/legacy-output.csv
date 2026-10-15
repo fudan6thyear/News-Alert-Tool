@@ -1,0 +1,3 @@
+publish_time,title,link,summary,source_key,source_name,source_list_url,source_page
+2026-03-01T00:00:00.000Z,Legacy fixture article,https://example.com/legacy,Legacy fixture summary,legacy_fixture,Legacy Fixture,https://example.com/legacy-feed,0
+2026-04-14T03:25:57.336Z,Legacy fixture end article,https://example.com/legacy-end,Legacy fixture end summary,legacy_fixture,Legacy Fixture,https://example.com/legacy-feed,1
